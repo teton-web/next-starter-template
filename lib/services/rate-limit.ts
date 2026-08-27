@@ -38,6 +38,60 @@ export function resetMemoryRateLimits() {
   memoryStore.clear()
 }
 
+export function clientKey(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for")
+  if (forwarded) return forwarded.split(",")[0]!.trim()
+  return (
+    request.headers.get("x-real-ip") ??
+    request.headers.get("cf-connecting-ip") ??
+    "unknown"
+  )
+}
+
+export function retryAfterSeconds(retryAfterMs?: number) {
+  return Math.max(1, Math.ceil((retryAfterMs ?? 60_000) / 1000))
+}
+
+export function tooManyRequestsResponse(retryAfterMs?: number) {
+  const retryAfter = retryAfterSeconds(retryAfterMs)
+  return new Response(
+    JSON.stringify({
+      error: "Too many requests. Please try again shortly.",
+      message: "Too many requests. Please try again shortly.",
+      code: "TOO_MANY_REQUESTS",
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(retryAfter),
+      },
+    },
+  )
+}
+
+export function authRateLimitBucket(pathname: string): "sign-in" | "forgot-password" | null {
+  const path = pathname.replace(/\/+$/, "")
+  if (path.endsWith("/sign-in/email")) return "sign-in"
+  if (path.endsWith("/request-password-reset") || path.endsWith("/forget-password")) {
+    return "forgot-password"
+  }
+  return null
+}
+
+export async function enforceAuthRouteRateLimit(request: Request): Promise<Response | null> {
+  const name = authRateLimitBucket(new URL(request.url).pathname)
+  if (!name) return null
+
+  const result = await checkRateLimit({
+    key: `auth:${name}:${clientKey(request)}`,
+    max: 5,
+    windowMs: 60_000,
+  })
+  if (result.allowed) return null
+  return tooManyRequestsResponse(result.retryAfterMs)
+}
+
 export async function checkRateLimit(input: LimitInput): Promise<RateLimitResult> {
   const resetAt = new Date(Date.now() + input.windowMs)
   const key = storageKey(input.key)

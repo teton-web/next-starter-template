@@ -8,7 +8,7 @@ Accepted
 
 `next-starter-template` ships:
 
-- Auth.js credentials + optional magic link
+- Better Auth credentials + optional magic link
 - Core identity schema + locales
 - Public marketing pages (contact, privacy, terms)
 - CMS entries/revisions (page + article) with draft → review → publish

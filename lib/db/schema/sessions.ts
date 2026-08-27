@@ -4,17 +4,17 @@ import { users } from "./users"
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
-  sessionToken: text("session_token").notNull().unique(),
+  token: text("token").notNull().unique(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  expires: timestamp("expires").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userIdIdx: index("idx_sessions_user_id").on(table.userId),
-  sessionTokenIdx: index("idx_sessions_session_token").on(table.sessionToken),
-  expiresIdx: index("idx_sessions_expires").on(table.expires),
+  tokenIdx: index("idx_sessions_token").on(table.token),
+  expiresIdx: index("idx_sessions_expires").on(table.expiresAt),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

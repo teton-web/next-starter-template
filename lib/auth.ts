@@ -1,13 +1,14 @@
-import NextAuth from "next-auth"
-import { DrizzleAdapter } from "@auth/drizzle-adapter"
-import type { Adapter } from "next-auth/adapters"
-import CredentialsProvider from "next-auth/providers/credentials"
-import ResendProvider from "next-auth/providers/resend"
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { APIError, createAuthMiddleware } from "better-auth/api"
+import { magicLink } from "better-auth/plugins"
+import { and, eq, isNull, sql } from "drizzle-orm"
+import bcrypt from "bcryptjs"
+import { Resend as ResendClient } from "resend"
 import { db } from "@/lib/db"
 import * as schema from "@/lib/db/schema"
-import { Resend as ResendClient } from "resend"
-import { eq, sql } from "drizzle-orm"
-import bcrypt from "bcryptjs"
+import { resetPasswordTokenFromCtx } from "@/lib/auth/reset-password-token-pure"
+import { publicResetPasswordUrl } from "@/lib/auth/reset-password-url-pure"
 import {
   renderResetPasswordEmail,
   renderSignInEmail,
@@ -22,160 +23,223 @@ function getResend() {
   return new ResendClient(apiKey)
 }
 
-const authAdapterSchema = {
-  usersTable: schema.users,
-  accountsTable: schema.accounts,
-  verificationTokensTable: schema.verificationTokens,
-} as unknown as Parameters<typeof DrizzleAdapter>[1]
+function emailFrom() {
+  const from = process.env.EMAIL_FROM
+  if (!from) {
+    throw new Error("EMAIL_FROM is not set")
+  }
+  return from
+}
 
-async function isAccountBlocked(
-  column: typeof schema.users.id | typeof schema.users.email,
-  value: string,
-): Promise<boolean> {
+export function isResendConfigured() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+}
+
+function invalidEmailOrPassword() {
+  return new APIError("UNAUTHORIZED", {
+    message: "Invalid email or password",
+    code: "INVALID_EMAIL_OR_PASSWORD",
+  })
+}
+
+export async function isAccountBlocked(userId: string): Promise<boolean> {
   const rows = await db
     .select({ deletedAt: schema.users.deletedAt })
     .from(schema.users)
-    .where(eq(column, value))
+    .where(eq(schema.users.id, userId))
     .limit(1)
 
   return Boolean(rows[0]?.deletedAt)
 }
 
-const createDrizzleAdapter = DrizzleAdapter as unknown as (
-  database: typeof db,
-  adapterSchema: typeof authAdapterSchema,
-) => Adapter
+async function findUserByEmail(email: string) {
+  const normalized = email.trim().toLowerCase()
+  const rows = await db
+    .select({
+      id: schema.users.id,
+      deletedAt: schema.users.deletedAt,
+    })
+    .from(schema.users)
+    .where(sql`lower(${schema.users.email}) = ${normalized}`)
+    .limit(1)
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: createDrizzleAdapter(db, authAdapterSchema),
-  providers: [
-    ...(process.env.RESEND_API_KEY && process.env.EMAIL_FROM
-      ? [
-          ResendProvider({
-            apiKey: process.env.RESEND_API_KEY,
-            from: process.env.EMAIL_FROM,
-            maxAge: 24 * 60 * 60,
-            async sendVerificationRequest({ identifier: email, url }) {
-              const resend = getResend()
-              await resend.emails.send({
-                from: process.env.EMAIL_FROM!,
-                to: email,
-                subject: "Sign in",
-                html: await renderSignInEmail({ url }),
-              })
-            },
-          }),
-        ]
-      : []),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
+  return rows[0] ?? null
+}
 
-        try {
-          const email = String(credentials.email).trim().toLowerCase()
-          const user = await db
-            .select()
-            .from(schema.users)
-            .where(sql`lower(${schema.users.email}) = ${email}`)
-            .limit(1)
+async function sendResetPasswordEmail({
+  user,
+  url,
+  token,
+}: {
+  user: { id: string; email: string }
+  url: string
+  token?: string
+}) {
+  if (await isAccountBlocked(user.id)) {
+    return
+  }
+  if (!isResendConfigured()) {
+    return
+  }
 
-          if (user.length === 0) {
-            return null
-          }
+  const pageUrl = publicResetPasswordUrl(url, token)
+  const resend = getResend()
+  await resend.emails.send({
+    from: emailFrom(),
+    to: user.email,
+    subject: "Reset your password",
+    html: await renderResetPasswordEmail({ url: pageUrl }),
+  })
+}
 
-          const foundUser = user[0]
+const authSchema = {
+  ...schema,
+  user: schema.users,
+  session: schema.sessions,
+  account: schema.accounts,
+  verification: schema.verifications,
+}
 
-          if (foundUser.deletedAt) {
-            return null
-          }
-
-          if (!foundUser.password) {
-            return null
-          }
-
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password as string,
-            foundUser.password,
-          )
-
-          if (!isPasswordValid) {
-            return null
-          }
-
-          return {
-            id: foundUser.id,
-            email: foundUser.email,
-            name: foundUser.name,
-            image: foundUser.image,
-          }
-        } catch (error) {
-          console.error("[auth] credentials authorize failed:", error)
-          return null
-        }
-      },
-    }),
-  ],
-  callbacks: {
-    async signIn({ user }) {
-      const email = user?.email
-      if (!email) return true
-      return !(await isAccountBlocked(schema.users.email, email))
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        if (await isAccountBlocked(schema.users.id, token.sub)) return session
-        session.user.id = token.sub
-      }
-      return session
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.sub = user.id
-      }
-      return token
-    },
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  session: {
-    strategy: "jwt",
-  },
+export const auth = betterAuth({
+  appName: process.env.NEXT_PUBLIC_SITE_NAME || "Next Starter",
   secret: process.env.AUTH_SECRET,
+  baseURL: process.env.AUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL,
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: authSchema,
+  }),
+  emailAndPassword: {
+    enabled: true,
+    disableSignUp: true,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url, token }) => {
+      await sendResetPasswordEmail({ user, url, token })
+    },
+    onPasswordReset: async ({ user }) => {
+      await db
+        .update(schema.users)
+        .set({
+          mustChangePassword: false,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(schema.users.id, user.id), isNull(schema.users.deletedAt)))
+    },
+    password: {
+      hash: (password) => bcrypt.hash(password, 10),
+      verify: ({ hash, password }) => bcrypt.compare(password, hash),
+    },
+  },
+  emailVerification: isResendConfigured()
+    ? {
+        sendVerificationEmail: async ({ user, url }) => {
+          const resend = getResend()
+          await resend.emails.send({
+            from: emailFrom(),
+            to: user.email,
+            subject: "Verify your email",
+            html: await renderVerifyEmail({ url }),
+          })
+        },
+      }
+    : undefined,
+  user: {
+    additionalFields: {
+      capabilities: {
+        type: "json",
+        required: false,
+        defaultValue: [],
+        input: false,
+      },
+      deletedAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
+      mustChangePassword: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false,
+      },
+    },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/email") {
+        const email = typeof ctx.body?.email === "string" ? ctx.body.email : ""
+        const user = email ? await findUserByEmail(email) : null
+        if (user?.deletedAt) {
+          throw invalidEmailOrPassword()
+        }
+      }
+
+      if (ctx.path === "/reset-password") {
+        const token = resetPasswordTokenFromCtx({ body: ctx.body, query: ctx.query })
+        if (!token) return
+        const rows = await db
+          .select({ value: schema.verifications.value })
+          .from(schema.verifications)
+          .where(eq(schema.verifications.identifier, `reset-password:${token}`))
+          .limit(1)
+        const userId = rows[0]?.value
+        if (userId && await isAccountBlocked(userId)) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Invalid token",
+            code: "INVALID_TOKEN",
+          })
+        }
+      }
+    }),
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          if (await isAccountBlocked(session.userId)) {
+            return false
+          }
+          return { data: session }
+        },
+      },
+    },
+  },
+  plugins: isResendConfigured()
+    ? [
+        magicLink({
+          disableSignUp: true,
+          sendMagicLink: async ({ email, url }) => {
+            const user = await findUserByEmail(email)
+            if (!user || user.deletedAt) {
+              return
+            }
+            const resend = getResend()
+            await resend.emails.send({
+              from: emailFrom(),
+              to: email,
+              subject: "Sign in",
+              html: await renderSignInEmail({ url }),
+            })
+          },
+        }),
+      ]
+    : [],
 })
 
-export async function sendPasswordResetEmail(email: string, token: string) {
-  const baseURL = process.env.AUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-  const resetUrl = `${baseURL}/reset-password?token=${token}`
-  const emailFrom = process.env.EMAIL_FROM!
-
-  const resend = getResend()
-  await resend.emails.send({
-    from: emailFrom,
-    to: email,
-    subject: "Reset your password",
-    html: await renderResetPasswordEmail({ url: resetUrl }),
+export async function getSession() {
+  const { headers } = await import("next/headers")
+  const session = await auth.api.getSession({
+    headers: await headers(),
   })
+
+  if (!session?.user) {
+    return null
+  }
+
+  if (await isAccountBlocked(session.user.id)) {
+    return null
+  }
+
+  return session
 }
 
-export async function sendVerificationEmail(email: string, url: string) {
-  const emailFrom = process.env.EMAIL_FROM!
-
-  const resend = getResend()
-  await resend.emails.send({
-    from: emailFrom,
-    to: email,
-    subject: "Verify your email",
-    html: await renderVerifyEmail({ url }),
-  })
-}
-
-export type Session = Awaited<ReturnType<typeof auth>>
+export type Session = typeof auth.$Infer.Session

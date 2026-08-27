@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
+import { and, eq, ne } from "drizzle-orm"
 import bcrypt from "bcryptjs"
+import { db } from "@/lib/db"
+import { accounts, sessions, users } from "@/lib/db/schema"
+import { getSession } from "@/lib/auth"
 import { jsonError, jsonOk, parseJson, requireUserId } from "@/lib/api/helpers"
 import { z } from "zod"
 
@@ -19,36 +20,54 @@ export async function POST(request: NextRequest) {
     const parsed = await parseJson(request, bodySchema)
     if (parsed instanceof Response) return parsed
 
-    const userResult = await db
+    const accountResult = await db
       .select()
-      .from(users)
-      .where(eq(users.id, userId))
+      .from(accounts)
+      .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")))
       .limit(1)
 
-    if (userResult.length === 0) {
-      return jsonError("User not found", 404)
-    }
-
-    const user = userResult[0]
-
-    if (!user.password) {
+    const account = accountResult[0]
+    const storedPassword = account?.password
+    if (!account || !storedPassword) {
       return jsonError("User does not have a password set", 400)
     }
 
-    const isCurrentPasswordValid = await bcrypt.compare(parsed.currentPassword, user.password)
+    const isCurrentPasswordValid = await bcrypt.compare(parsed.currentPassword, storedPassword)
     if (!isCurrentPasswordValid) {
       return jsonError("Current password is incorrect", 400)
+    }
+
+    if (parsed.newPassword === parsed.currentPassword) {
+      return jsonError("New password must be different from the current password", 400)
     }
 
     const hashedNewPassword = await bcrypt.hash(parsed.newPassword, 10)
 
     await db
-      .update(users)
+      .update(accounts)
       .set({
         password: hashedNewPassword,
         updatedAt: new Date(),
       })
+      .where(eq(accounts.id, account.id))
+
+    await db
+      .update(users)
+      .set({
+        mustChangePassword: false,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, userId))
+
+    const currentSession = await getSession()
+    const currentToken = currentSession?.session?.token
+    if (currentToken) {
+      await db
+        .delete(sessions)
+        .where(and(eq(sessions.userId, userId), ne(sessions.token, currentToken)))
+    } else {
+      await db.delete(sessions).where(eq(sessions.userId, userId))
+    }
 
     return jsonOk({
       success: true,

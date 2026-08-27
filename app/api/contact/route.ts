@@ -4,8 +4,7 @@ import { Resend } from "resend"
 import { db } from "@/lib/db"
 import { contactInquiries } from "@/lib/db/schema"
 import { parseJson, jsonOk } from "@/lib/api/helpers"
-import { clientKey } from "@/lib/api/rate-limit"
-import { checkRateLimit } from "@/lib/services/rate-limit"
+import { checkRateLimit, clientKey } from "@/lib/services/rate-limit"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
 
 const schema = z.object({

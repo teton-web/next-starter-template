@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, index, jsonb } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, index, jsonb, boolean } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { sessions } from "./sessions"
 import { accounts } from "./accounts"
@@ -12,11 +12,11 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: timestamp("email_verified"),
+  emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  password: text("password"),
   capabilities: jsonb("capabilities").$type<string[]>().default([]),
   deletedAt: timestamp("deleted_at"),
+  mustChangePassword: boolean("must_change_password").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

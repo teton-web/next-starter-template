@@ -33,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <h1 className="text-2xl font-bold">Admin</h1>
             <Link href="/admin/content" className="text-sm hover:underline">Content</Link>
             <Link href="/admin/media" className="text-sm hover:underline">Media</Link>
+            <Link href="/admin/account" className="text-sm hover:underline">Account</Link>
             <Link href="/">
               <Button variant="outline" size="sm">
                 <Home className="w-4 h-4 mr-2" />

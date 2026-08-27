@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/auth"
 import { checkCapability, type Capability } from "@/lib/auth/capabilities"
 import { z } from "zod"
 
 export async function getSessionUserId(): Promise<string | null> {
-  const session = await auth()
+  const session = await getSession()
   return session?.user?.id ?? null
 }
 
@@ -32,6 +32,10 @@ export function jsonOk<T>(data: T, status = 200) {
 
 export function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status })
+}
+
+export function passwordChangeRequiredResponse() {
+  return jsonError("Password change required.", 403)
 }
 
 export async function parseJson<T extends z.ZodTypeAny>(

@@ -8,7 +8,7 @@ A production-ready Next.js starter with authentication, Neon/Drizzle, Doppler-or
 
 - **Next.js 16** with App Router
 - **Drizzle ORM** with Neon PostgreSQL (migrations only)
-- **NextAuth.js v5** (Auth.js) — credentials + optional Resend magic link
+- **Better Auth** — credentials + optional Resend magic link (no public signup)
 - **Resend** + React Email templates
 - **Tailwind CSS 4** + **shadcn/ui**
 - **TypeScript** (build fails on type errors)
@@ -61,7 +61,8 @@ Open [http://localhost:3000](http://localhost:3000). Sign in at `/login`.
 
 ## Authentication
 
-- Credentials (email + password, case-insensitive match)
+- Credentials (email + password) via Better Auth with database sessions
+- Public registration is disabled; admins are created by `bun run db:seed`
 - Optional Resend magic-link when `RESEND_API_KEY` and `EMAIL_FROM` are set
 - Soft-deleted users (`users.deleted_at`) cannot authenticate
 - Admin UI is at `/admin`; unauthenticated users are sent to `/login?callbackUrl=...`
@@ -95,11 +96,14 @@ See `.env.example`. Required: `DATABASE_URL`, `AUTH_SECRET`.
 ```bash
 bun run lint
 bun run test
+bun run audit
 bun run env:verify
 bun run db:generate
 bun run db:migrate
 bun run db:seed
 ```
+
+`bun run audit` is `bun audit --audit-level=high` (Bun 1.3: fail CI on high/critical only). See [SECURITY.md](SECURITY.md).
 
 ## Deployment
 

@@ -1,79 +1,53 @@
 "use client"
 
-import { useSession as useNextAuthSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react"
+import { createAuthClient } from "better-auth/react"
+import { inferAdditionalFields, magicLinkClient } from "better-auth/client/plugins"
 
-export function useSession() {
-  const { data: session, status } = useNextAuthSession()
-  return {
-    data: session,
-    isPending: status === "loading",
-  }
-}
+export const authClient = createAuthClient({
+  plugins: [
+    magicLinkClient(),
+    inferAdditionalFields({
+      user: {
+        mustChangePassword: {
+          type: "boolean",
+        },
+      },
+    }),
+  ],
+})
+
+export const useSession = authClient.useSession
 
 export async function signIn(email: string, password: string) {
-  const result = await nextAuthSignIn("credentials", {
+  return authClient.signIn.email({
     email,
     password,
-    redirect: false,
   })
-
-  if (result?.error) {
-    return {
-      error: {
-        message: result.error,
-      },
-    }
-  }
-
-  return { data: result, error: null }
 }
 
-export const signOut = async () => {
-  await nextAuthSignOut({ redirect: false })
+export async function signInMagicLink(email: string, callbackURL = "/admin") {
+  return authClient.signIn.magicLink({
+    email,
+    callbackURL,
+  })
+}
+
+export async function signOut() {
+  await authClient.signOut()
 }
 
 export async function forgetPassword(email: string) {
-  const response = await fetch("/api/auth/forgot-password", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email }),
+  return authClient.requestPasswordReset({
+    email,
+    redirectTo: "/reset-password",
   })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    return {
-      error: {
-        message: data.error || "Failed to send password reset email",
-      },
-    }
-  }
-
-  return { data, error: null }
 }
 
 export async function resetPassword(token: string, newPassword: string) {
-  const response = await fetch("/api/auth/reset-password", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ token, newPassword }),
+  return authClient.resetPassword({
+    token,
+    newPassword,
   })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    return {
-      error: {
-        message: data.error || "Failed to reset password",
-      },
-    }
-  }
-
-  return { data, error: null }
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
@@ -106,6 +80,7 @@ export interface User {
   id: string
   email: string
   name: string
+  mustChangePassword?: boolean
 }
 
 export interface Session {

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@/lib/auth"
+import { auth, isAccountBlocked } from "@/lib/auth"
+import { safeCallbackUrl } from "@/lib/auth/callback-url-pure"
+import { passwordChangeRequiredResponse } from "@/lib/api/helpers"
+import {
+  isAdminPagePath,
+  shouldRedirectForMustChangePassword,
+  shouldRejectApiForMustChangePassword,
+} from "@/lib/auth/must-change-password-pure"
 import {
   isSiteGateEnabled,
   safeSiteGateNext,
@@ -8,10 +15,6 @@ import {
   siteGatePassword,
   verifySiteGateCookie,
 } from "@/lib/site-gate"
-
-function isAdminPath(pathname: string) {
-  return pathname === "/admin" || pathname.startsWith("/admin/")
-}
 
 function isGateRoute(pathname: string) {
   return pathname === "/site-gate" || pathname === "/api/site-gate"
@@ -28,11 +31,20 @@ function isStaticAsset(pathname: string) {
   )
 }
 
+function isSiteGateExempt(pathname: string) {
+  return isStaticAsset(pathname) || pathname === "/api/health"
+}
+
+function isHtmlNavigation(request: NextRequest) {
+  const accept = request.headers.get("accept") || ""
+  return request.method === "GET" && accept.includes("text/html")
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const password = siteGatePassword()
 
-  if (isSiteGateEnabled() && password && !isStaticAsset(pathname)) {
+  if (isSiteGateEnabled() && password && !isSiteGateExempt(pathname)) {
     const hasGateAccess = await verifySiteGateCookie(
       request.cookies.get(SITE_GATE_COOKIE)?.value,
       password,
@@ -48,7 +60,7 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!hasGateAccess) {
-      if (pathname.startsWith("/api/")) {
+      if (pathname.startsWith("/api/") && !isHtmlNavigation(request)) {
         return NextResponse.json({ error: "Site gate access required." }, { status: 401 })
       }
 
@@ -64,12 +76,29 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login)
   }
 
-  if (isAdminPath(pathname)) {
-    const session = await auth()
-    if (!session) {
+  if (isAdminPagePath(pathname)) {
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session || await isAccountBlocked(session.user.id)) {
       const login = new URL("/login", request.url)
       login.searchParams.set("callbackUrl", `${pathname}${search}`)
       return NextResponse.redirect(login)
+    }
+
+    const mustChangePassword = session.user.mustChangePassword === true
+    if (mustChangePassword && shouldRedirectForMustChangePassword(pathname)) {
+      const account = new URL("/admin/account", request.url)
+      const dest = safeCallbackUrl(`${pathname}${search}`)
+      if (dest !== "/admin/account") {
+        account.searchParams.set("callbackUrl", dest)
+      }
+      return NextResponse.redirect(account)
+    }
+  }
+
+  if (shouldRejectApiForMustChangePassword(pathname)) {
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (session && !await isAccountBlocked(session.user.id) && session.user.mustChangePassword === true) {
+      return passwordChangeRequiredResponse()
     }
   }
 

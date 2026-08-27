@@ -12,7 +12,7 @@
 
 ## Auth
 
-- NextAuth.js v5 (Auth.js) with credentials; optional Resend magic-link when `RESEND_API_KEY` and `EMAIL_FROM` are set.
+- Better Auth with credentials; optional Resend magic-link when `RESEND_API_KEY` and `EMAIL_FROM` are set. Public signup is off (`disableSignUp`).
 - Admin pages live at `/admin`. Login is `/login` (not `/admin/login`). Preserve `callbackUrl`.
 
 ## Conventions

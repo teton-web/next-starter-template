@@ -21,6 +21,10 @@ describe("document security headers", () => {
     expect(config).toContain('value: "strict-origin-when-cross-origin"')
     expect(config).toContain('key: "Content-Security-Policy"')
     expect(config).toContain("frame-ancestors 'none'")
+    expect(config).toContain(
+      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://*.vercel-scripts.com https://vercel.live",
+    )
+    expect(config).not.toContain("'unsafe-eval'")
   })
 
   test("TypeScript errors are not ignored", () => {

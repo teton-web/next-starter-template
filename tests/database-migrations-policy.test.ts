@@ -36,6 +36,33 @@ describe("database migrations policy", () => {
     expect(read("drizzle/meta/_journal.json")).toContain("0000_core_identity")
   })
 
+  test("mustChangePassword migration is committed", () => {
+    expect(existsSync(join(root, "drizzle/0003_must_change_password.sql"))).toBe(true)
+    expect(read("drizzle/0003_must_change_password.sql")).toContain(
+      'ALTER TABLE "users" ADD COLUMN "must_change_password" boolean DEFAULT false NOT NULL',
+    )
+    expect(read("drizzle/meta/_journal.json")).toContain("0003_must_change_password")
+  })
+
+  test("better auth migration is committed with password backfill", () => {
+    expect(existsSync(join(root, "drizzle/0002_better_auth.sql"))).toBe(true)
+    const sql = read("drizzle/0002_better_auth.sql")
+    expect(sql).toContain('CREATE TABLE "verifications"')
+    expect(sql).toContain("local:credential")
+    expect(sql).toContain('SET "password" = "u"."password"')
+    expect(sql).toContain('ALTER TABLE "users" DROP COLUMN "password"')
+    expect(sql).toContain('WHERE "email_verified" IS NOT NULL OR "password" IS NOT NULL')
+    expect(read("drizzle/meta/_journal.json")).toContain("0002_better_auth")
+  })
+
+  test("credential emailVerified backfill is committed", () => {
+    expect(existsSync(join(root, "drizzle/0004_email_verified_credential_backfill.sql"))).toBe(true)
+    const sql = read("drizzle/0004_email_verified_credential_backfill.sql")
+    expect(sql).toContain('SET "email_verified" = true')
+    expect(sql).toContain('provider_id" = \'credential\'')
+    expect(read("drizzle/meta/_journal.json")).toContain("0004_email_verified_credential_backfill")
+  })
+
   test("migration policy doc exists", () => {
     expect(existsSync(join(root, "docs/DATABASE_MIGRATIONS.md"))).toBe(true)
     expect(read("docs/DATABASE_MIGRATIONS.md")).toMatch(/never use.*push|Do not use.*push/i)
