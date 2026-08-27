@@ -13,7 +13,7 @@ describe("Better Auth cutover", () => {
     const pkg = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>
     }
-    expect(pkg.dependencies["better-auth"]).toBe("1.7.1")
+    expect(pkg.dependencies["better-auth"]).toBe("1.7.2")
     expect(pkg.dependencies["next-auth"]).toBeUndefined()
     expect(pkg.dependencies["@auth/drizzle-adapter"]).toBeUndefined()
   })
