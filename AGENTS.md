@@ -151,6 +151,7 @@ Copy these rules into the onboarded file (Secrets retargeted to `<slug>`).
 - CMS: pages/articles with draft → in_review → published. Do not add BlockNote.
 - Media: `/admin/media` is the library; preview/production requires `BLOB_READ_WRITE_TOKEN`. Local disk is development-only.
 - Search indexing stays off until `SEARCH_INDEXING_ENABLED=true`.
+- Feature flags: Node `isEnabled` may read Neon through a ≤60s memory cache (invalidate on `setFeatureFlag`). `proxy.ts` uses `lib/flags/proxy-resolve.ts` only — catalog + Doppler `FEATURE_<KEY>=0` + memory/cookie, never `lib/db`. Optional flags fail closed on cold cache / DB errors; platform (`/login`, `/admin`) stays up. Flag-cache cookies HMAC with `AUTH_SECRET`. See `docs/FEATURE_FLAGS.md`.
 
 ---
 
@@ -200,6 +201,7 @@ Write **only** this (filled). No first-run marker. No questionnaire.
 - CMS: pages/articles with draft → in_review → published. Do not add BlockNote.
 - Media: `/admin/media` is the library; preview/production requires `BLOB_READ_WRITE_TOKEN`. Local disk is development-only.
 - Search indexing stays off until `SEARCH_INDEXING_ENABLED=true`.
+- Feature flags: Node `isEnabled` may read Neon through a ≤60s memory cache (invalidate on `setFeatureFlag`). `proxy.ts` uses `lib/flags/proxy-resolve.ts` only — catalog + Doppler `FEATURE_<KEY>=0` + memory/cookie, never `lib/db`. Optional flags fail closed on cold cache / DB errors; platform (`/login`, `/admin`) stays up. Flag-cache cookies HMAC with `AUTH_SECRET`. See `docs/FEATURE_FLAGS.md`.
 ```
 
 ---

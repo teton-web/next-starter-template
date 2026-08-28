@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm"
 import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { db } from "@/lib/db"
 import { featureFlags } from "@/lib/db/schema"
-import { FLAG_CATALOG, isFlagKey, isPlatformFlagKey, type FlagKey } from "./catalog"
+import { FLAG_CATALOG, isFlagKey, isOptionalFlagKey, isPlatformFlagKey, type FlagKey } from "./catalog"
+import { invalidateFeatureFlagCache, setCachedDbEnabled } from "./cache"
 
 export type SetFeatureFlagInput = {
   key: string
@@ -48,7 +49,7 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
   const { ipAddress, userAgent } = auditClientMeta(input.request)
   const updatedByUserId = input.actorUserId ?? null
 
-  return db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
     const existing = await tx
       .select({
         enabled: featureFlags.enabled,
@@ -64,7 +65,7 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
     const nextConfig = input.config ?? previousConfig
 
     if (previous && previous.enabled === input.enabled && jsonEqual(previousConfig, nextConfig)) {
-      return { key, enabled: previous.enabled, config: previousConfig }
+      return { wrote: false as const, key, enabled: previous.enabled, config: previousConfig }
     }
 
     const updatedAt = new Date()
@@ -105,6 +106,15 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       tx,
     )
 
-    return { key, enabled: input.enabled, config: nextConfig }
+    return { wrote: true as const, key, enabled: input.enabled, config: nextConfig }
   })
+
+  if (outcome.wrote) {
+    invalidateFeatureFlagCache()
+    if (isOptionalFlagKey(outcome.key)) {
+      setCachedDbEnabled(outcome.key, outcome.enabled)
+    }
+  }
+
+  return { key: outcome.key, enabled: outcome.enabled, config: outcome.config }
 }
