@@ -19,6 +19,12 @@ import {
 } from "@/lib/auth/admin-users-pure"
 import { forbiddenUnlessAllowed } from "@/lib/api/helpers"
 import { setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
+import {
+  deleteResetPasswordVerificationsForUser,
+  RESET_PASSWORD_IDENTIFIER_LIKE,
+  resetPasswordVerificationsForUser,
+} from "@/lib/auth/reset-password-verifications"
+import { verifications } from "@/lib/db/schema"
 import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
 const root = join(import.meta.dir, "..")
@@ -195,6 +201,36 @@ describe("admin users capability gate", () => {
   })
 })
 
+describe("reset-password verification invalidation", () => {
+  test("scopes deletes to that user and reset-password identifiers", () => {
+    const condition = resetPasswordVerificationsForUser("user-42")
+    expect(sqlMentions(condition, "user-42")).toBe(true)
+    expect(sqlMentions(condition, RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(true)
+    expect(sqlMentions(condition, "value")).toBe(true)
+    expect(sqlMentions(condition, "identifier")).toBe(true)
+    expect(RESET_PASSWORD_IDENTIFIER_LIKE).toBe("reset-password:%")
+  })
+
+  test("delete helper issues delete().where() on verifications", async () => {
+    const deleted: unknown[] = []
+    const tx = {
+      delete: (table: unknown) => {
+        expect(table).toBe(verifications)
+        return {
+          where: (condition: unknown) => {
+            deleted.push(condition)
+            return undefined
+          },
+        }
+      },
+    }
+    await deleteResetPasswordVerificationsForUser(tx, "user-42")
+    expect(deleted).toHaveLength(1)
+    expect(sqlMentions(deleted[0], "user-42")).toBe(true)
+    expect(sqlMentions(deleted[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(true)
+  })
+})
+
 describe("welcome set-password URL", () => {
   test("builds a page token URL from AUTH origin", () => {
     expect(setPasswordPageUrl("https://example.com", "abc123")).toBe(
@@ -250,26 +286,89 @@ const sendWelcomeEmail = mock(
 const writeAuditLog = mock(async () => undefined)
 const auditClientMeta = mock(() => ({}))
 
-let existingRows: Array<{ id: string; deletedAt: Date | null }> = []
+let existingRows: Array<{
+  id: string
+  deletedAt: Date | null
+  name?: string
+  capabilities?: string[]
+  emailVerified?: boolean
+  mustChangePassword?: boolean
+}> = []
 let credentialRows: Array<{ id: string; password: string | null }> = []
+let lockedRows: Array<{
+  id: string
+  capabilities: string[] | null
+  deletedAt: Date | null
+}> = []
+
+type TxOp = { op: "delete" | "insert" | "update"; table?: unknown }
+type TxTrace = { ops: TxOp[]; deleteConditions: unknown[]; insertValues: unknown[] }
+let transactions: TxTrace[] = []
 
 function createTx() {
   let selects = 0
+  const ops: TxOp[] = []
+  const deleteConditions: unknown[] = []
+  const insertValues: unknown[] = []
+  transactions.push({ ops, deleteConditions, insertValues })
   const tx = {
     select: mock(() => {
       selects += 1
       return tx
     }),
     from: mock(() => tx),
-    where: mock(() => tx),
+    where: mock((condition?: unknown) => {
+      if (ops.at(-1)?.op === "delete") deleteConditions.push(condition)
+      return tx
+    }),
     limit: mock(async () => (selects <= 1 ? existingRows : credentialRows)),
-    insert: mock(() => tx),
-    values: mock(async () => undefined),
-    update: mock(() => tx),
+    insert: mock((table?: unknown) => {
+      ops.push({ op: "insert", table })
+      return tx
+    }),
+    values: mock(async (vals?: unknown) => {
+      insertValues.push(vals)
+      return undefined
+    }),
+    update: mock((table?: unknown) => {
+      ops.push({ op: "update", table })
+      return tx
+    }),
     set: mock(() => tx),
-    delete: mock(() => tx),
+    delete: mock((table?: unknown) => {
+      ops.push({ op: "delete", table })
+      return tx
+    }),
+    orderBy: mock(() => tx),
+    for: mock(async () => lockedRows),
   }
   return tx
+}
+
+function verificationOps(trace = transactions[0]) {
+  return (trace?.ops ?? [])
+    .filter((op) => op.table === verifications)
+    .map((op) => op.op)
+}
+
+function sqlMentions(value: unknown, needle: string): boolean {
+  const seen = new Set<unknown>()
+  const stack: unknown[] = [value]
+  while (stack.length) {
+    const current = stack.pop()
+    if (typeof current === "string") {
+      if (current.includes(needle)) return true
+      continue
+    }
+    if (!current || typeof current !== "object" || seen.has(current)) continue
+    seen.add(current)
+    if (Array.isArray(current)) {
+      stack.push(...current)
+      continue
+    }
+    stack.push(...Object.values(current))
+  }
+  return false
 }
 
 mock.module("@/lib/auth", () => ({
@@ -294,6 +393,7 @@ mock.module("@/lib/db", () => ({
 }))
 
 const { POST } = await import("@/app/api/admin/users/route")
+const { PATCH } = await import("@/app/api/admin/users/[id]/route")
 
 function inviteRequest() {
   return new Request("http://localhost/api/admin/users", {
@@ -334,6 +434,8 @@ describe("POST /api/admin/users", () => {
     auditClientMeta.mockImplementation(() => ({}))
     existingRows = []
     credentialRows = []
+    lockedRows = []
+    transactions = []
     resetMemoryRateLimits()
     delete process.env.RESEND_API_KEY
     delete process.env.NEXT_PUBLIC_BASE_URL
@@ -431,6 +533,100 @@ describe("POST /api/admin/users", () => {
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: WELCOME_EMAIL_ERROR })
     expect(sendWelcomeEmail).toHaveBeenCalledTimes(1)
+  })
+
+  test("create invite deletes prior reset-password tokens before insert", async () => {
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(verificationOps()).toEqual(["delete", "insert"])
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], body.id)).toBe(true)
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
+      true,
+    )
+    const inserted = transactions[0]?.insertValues.find(
+      (row) =>
+        row &&
+        typeof row === "object" &&
+        "identifier" in row &&
+        String((row as { identifier: string }).identifier).startsWith("reset-password:"),
+    ) as { value: string } | undefined
+    expect(inserted?.value).toBe(body.id)
+  })
+
+  test("restore re-invite deletes prior tokens then inserts the new one", async () => {
+    existingRows = [
+      {
+        id: "restored-1",
+        deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+        name: "Old Name",
+        capabilities: ["moderate"],
+        emailVerified: false,
+        mustChangePassword: false,
+      },
+    ]
+    credentialRows = [{ id: "acct-1", password: "$2a$10$priorhash" }]
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.id).toBe("restored-1")
+    expect(verificationOps()).toEqual(["delete", "insert"])
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], "restored-1")).toBe(true)
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
+      true,
+    )
+  })
+})
+
+describe("PATCH /api/admin/users/[id]", () => {
+  beforeEach(() => {
+    getSession.mockReset()
+    checkCapability.mockReset()
+    writeAuditLog.mockReset()
+    auditClientMeta.mockReset()
+    getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
+    checkCapability.mockImplementation(async () => true)
+    writeAuditLog.mockImplementation(async () => undefined)
+    auditClientMeta.mockImplementation(() => ({}))
+    existingRows = []
+    credentialRows = []
+    lockedRows = [
+      { id: "admin-1", capabilities: ["admin"], deletedAt: null },
+      { id: "u1", capabilities: ["moderate"], deletedAt: null },
+    ]
+    transactions = []
+    resetMemoryRateLimits()
+  })
+
+  test("deletedAt=true deletes outstanding reset-password tokens", async () => {
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/users/u1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deletedAt: true }),
+      }),
+      { params: Promise.resolve({ id: "u1" }) },
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ id: "u1", deletedAt: true })
+    expect(verificationOps()).toEqual(["delete"])
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], "u1")).toBe(true)
+    expect(sqlMentions(transactions[0]?.deleteConditions[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
+      true,
+    )
+  })
+
+  test("capability-only PATCH does not delete reset-password tokens", async () => {
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/users/u1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capabilities: ["moderate"] }),
+      }),
+      { params: Promise.resolve({ id: "u1" }) },
+    )
+    expect(response.status).toBe(200)
+    expect(verificationOps()).toEqual([])
   })
 })
 
