@@ -1,7 +1,22 @@
 import bcrypt from "bcryptjs"
 import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { accounts, locales, users } from "@/lib/db/schema"
+import { accounts, featureFlags, locales, users } from "@/lib/db/schema"
+import { FLAG_CATALOG, PLATFORM_FLAG_KEYS } from "@/lib/flags/catalog"
+
+async function seedPlatformFeatureFlags() {
+  await db
+    .insert(featureFlags)
+    .values(
+      PLATFORM_FLAG_KEYS.map((key) => ({
+        key,
+        enabled: FLAG_CATALOG[key].defaultEnabled,
+        config: {},
+      })),
+    )
+    .onConflictDoNothing({ target: featureFlags.key })
+  console.log("Platform feature flag rows present (documentation only; optional flags stay unset).")
+}
 
 async function seedDefaultLocale() {
   const existingDefault = await db
@@ -128,6 +143,7 @@ async function main() {
   }
 
   await seedDefaultLocale()
+  await seedPlatformFeatureFlags()
 }
 
 main().catch((error) => {
