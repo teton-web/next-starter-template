@@ -18,7 +18,8 @@ Update this table whenever you add a Route Handler.
 | `GET/POST /api/admin/cms` | Session + `moderate` (admin implies moderate) | List/create CMS entries. |
 | `GET/PATCH/DELETE /api/admin/cms/:id` | Session + `moderate` | Load entry + revisions; save/publish/unpublish; hard-delete drafts only. |
 | `POST /api/admin/cms/:id/restore` | Session + `moderate` | `{ revisionId }` copies title/slug/excerpt/body/hero into the working draft, forces `draft` (does not republish; `publishedAt` is live-at, not restored), writes a **new** revision, never deletes old ones. Audited as `update` with restore metadata. |
+| `GET /api/cron/health` | `CRON_SECRET` | Flag `cron` (default off; dark without Doppler `CRON_SECRET`). `requireCronSecret`: `Authorization: Bearer $CRON_SECRET` and/or Vercel `x-vercel-cron` plus secret (`Bearer` or `x-cron-secret`), constant-time compare. Flag off → 404 even with a valid secret. Missing/wrong secret → 401. Authorized → 200 `{ ok: true }`. Site-gate and session skip `/api/cron/*` in `proxy.ts` so Vercel cron is not blocked. Pattern for later webhook/cron jobs; no `publish_at` worker here. |
 
-Site gate (preview/production only) runs in `proxy.ts` before page auth. `GET /api/health` is exempt, like static assets. Cron/webhook bypasses should be added explicitly if you introduce those routes.
+Site gate (preview/production only) runs in `proxy.ts` before page auth. `GET /api/health` and `/api/cron/*` are exempt, like static assets. Cron/webhook machine routes use `requireCronSecret` from `lib/cron/require-cron-secret.ts` — do not rely on a session cookie.
 
 Capabilities (`admin` implies `moderate`) live on `users.capabilities`. Use `requireUserId` + `requireCapabilityResponse` from `lib/api/helpers.ts`.
