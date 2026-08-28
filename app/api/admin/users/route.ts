@@ -3,7 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
-import { accounts, users, verifications } from "@/lib/db/schema"
+import { accounts, sessions, users, verifications } from "@/lib/db/schema"
 import {
   jsonOk,
   parseJson,
@@ -129,6 +129,7 @@ export async function POST(request: Request) {
         const id = decision === "restore" ? existing[0]!.id : crypto.randomUUID()
 
         if (decision === "restore") {
+          await tx.delete(sessions).where(eq(sessions.userId, id))
           await tx
             .update(users)
             .set({
