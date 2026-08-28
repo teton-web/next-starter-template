@@ -2,6 +2,7 @@ import { eq, isNull } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/lib/db"
 import { users } from "@/lib/db/schema"
+import { deleteResetPasswordVerificationsForUser } from "@/lib/auth/reset-password-verifications"
 import {
   jsonOk,
   parseJson,
@@ -69,6 +70,7 @@ export async function PATCH(
         ) {
           throw new HttpError(400, LAST_ADMIN_ERROR)
         }
+        await deleteResetPasswordVerificationsForUser(tx, id)
         await tx
           .update(users)
           .set({ deletedAt: new Date(), updatedAt: new Date() })

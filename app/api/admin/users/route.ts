@@ -24,6 +24,7 @@ import {
 } from "@/lib/auth/admin-users-pure"
 import { sendWelcomeEmail } from "@/lib/auth"
 import { setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
+import { deleteResetPasswordVerificationsForUser } from "@/lib/auth/reset-password-verifications"
 import {
   checkRateLimit,
   clientKey,
@@ -174,6 +175,7 @@ export async function POST(request: Request) {
           })
         }
 
+        await deleteResetPasswordVerificationsForUser(tx, id)
         await tx.insert(verifications).values({
           id: crypto.randomUUID(),
           identifier: `reset-password:${token}`,
