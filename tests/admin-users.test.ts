@@ -12,6 +12,8 @@ import {
   isAdminUser,
   LAST_ADMIN_ERROR,
   lastAdminCapabilityChangeBlocked,
+  restoreCompensateCredentialAction,
+  restoreCompensateUserFields,
   wouldRemoveLastAdmin,
 } from "@/lib/auth/admin-users-pure"
 import { forbiddenUnlessAllowed } from "@/lib/api/helpers"
@@ -87,6 +89,91 @@ describe("invite existing decision", () => {
     expect(inviteExistingDecision(null)).toBe("create")
     expect(inviteExistingDecision({ deletedAt: null })).toBe("reject_live")
     expect(inviteExistingDecision({ deletedAt: new Date() })).toBe("restore")
+  })
+})
+
+describe("restore invite mail-failure compensate", () => {
+  const base = {
+    name: "Prior Name",
+    capabilities: ["moderate"],
+    emailVerified: false,
+    mustChangePassword: false,
+  }
+
+  test("restores the prior credential hash when one already existed", () => {
+    expect(
+      restoreCompensateCredentialAction({
+        ...base,
+        credentialId: "acct-1",
+        priorPasswordHash: "$2a$10$priorhash",
+        credentialWasInserted: false,
+      }),
+    ).toEqual({
+      type: "restore_hash",
+      id: "acct-1",
+      password: "$2a$10$priorhash",
+    })
+  })
+
+  test("restores a null prior password hash", () => {
+    expect(
+      restoreCompensateCredentialAction({
+        ...base,
+        credentialId: "acct-1",
+        priorPasswordHash: null,
+        credentialWasInserted: false,
+      }),
+    ).toEqual({ type: "restore_hash", id: "acct-1", password: null })
+  })
+
+  test("deletes a credential inserted by this restore", () => {
+    expect(
+      restoreCompensateCredentialAction({
+        ...base,
+        credentialId: "acct-new",
+        priorPasswordHash: null,
+        credentialWasInserted: true,
+      }),
+    ).toEqual({ type: "delete_inserted", id: "acct-new" })
+  })
+
+  test("is a no-op when there is no credential id", () => {
+    expect(
+      restoreCompensateCredentialAction({
+        ...base,
+        credentialId: null,
+        priorPasswordHash: null,
+        credentialWasInserted: false,
+      }),
+    ).toEqual({ type: "none" })
+  })
+
+  test("restores prior profile fields and re-sets deletedAt", () => {
+    const now = new Date("2026-08-28T12:00:00.000Z")
+    expect(
+      restoreCompensateUserFields(
+        {
+          ...base,
+          credentialId: "acct-1",
+          priorPasswordHash: "$2a$10$priorhash",
+          credentialWasInserted: false,
+        },
+        now,
+      ),
+    ).toEqual({
+      name: "Prior Name",
+      capabilities: ["moderate"],
+      emailVerified: false,
+      mustChangePassword: false,
+      deletedAt: now,
+      updatedAt: now,
+    })
+  })
+
+  test("users POST compensate uses restore helpers", () => {
+    const route = readFileSync(join(root, "app/api/admin/users/route.ts"), "utf8")
+    expect(route).toContain("restoreCompensateUserFields")
+    expect(route).toContain("restoreCompensateCredentialAction")
   })
 })
 
