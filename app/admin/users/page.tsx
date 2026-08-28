@@ -36,11 +36,13 @@ export default function AdminUsersPage() {
   const [name, setName] = useState("")
   const [inviteCaps, setInviteCaps] = useState<Capability[]>(["moderate"])
   const [error, setError] = useState("")
+  const [setPasswordUrl, setSetPasswordUrl] = useState("")
   const [pending, setPending] = useState(false)
 
   async function inviteUser(event: React.FormEvent) {
     event.preventDefault()
     setError("")
+    setSetPasswordUrl("")
     setPending(true)
     try {
       const response = await fetch("/api/admin/users", {
@@ -52,6 +54,9 @@ export default function AdminUsersPage() {
       if (!response.ok) {
         setError(typeof body.error === "string" ? body.error : "Unable to complete this invite.")
         return
+      }
+      if (typeof body.setPasswordUrl === "string") {
+        setSetPasswordUrl(body.setPasswordUrl)
       }
       setEmail("")
       setName("")
@@ -137,6 +142,23 @@ export default function AdminUsersPage() {
         {error ? (
           <div role="alert" className="text-sm text-red-500">
             {error}
+          </div>
+        ) : null}
+        {setPasswordUrl ? (
+          <div role="status" className="space-y-2">
+            <Label htmlFor="invite-set-password-url">Set-password link (email was not sent)</Label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input id="invite-set-password-url" readOnly value={setPasswordUrl} />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(setPasswordUrl).catch(() => {})
+                }}
+              >
+                Copy
+              </Button>
+            </div>
           </div>
         ) : null}
         <Button type="submit" disabled={pending}>
