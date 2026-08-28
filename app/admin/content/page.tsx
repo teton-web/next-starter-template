@@ -5,6 +5,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cmsPreviewPath } from "@/lib/cms/preview-pure"
 
 type Entry = {
   id: string
@@ -58,9 +59,14 @@ export default function AdminContentPage() {
                 {entry.entryType} · {entry.status} · {entry.routePath}
               </p>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/admin/content/${entry.id}`}>Edit</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={cmsPreviewPath(entry.id)}>Preview</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/admin/content/${entry.id}`}>Edit</Link>
+              </Button>
+            </div>
           </li>
         ))}
       </ul>

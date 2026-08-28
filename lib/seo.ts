@@ -47,6 +47,21 @@ export function indexingMetadata() {
   }
 }
 
+export function noindexMetadata() {
+  return {
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      googleBot: {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      },
+    },
+  }
+}
+
 export function organizationJsonLd() {
   const name = siteName()
   const url = getCanonicalSiteUrl()
