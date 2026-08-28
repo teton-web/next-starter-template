@@ -15,6 +15,7 @@ import {
   renderVerifyEmail,
   renderWelcomeEmail,
 } from "@/emails/render"
+import { auditClientMeta, writeAuditLogSafe } from "@/lib/admin/audit"
 
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY
@@ -223,6 +224,34 @@ export const auth = betterAuth({
             return false
           }
           return { data: session }
+        },
+        after: async (session, context) => {
+          const meta = auditClientMeta(context?.request, {
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+          })
+          await writeAuditLogSafe({
+            actorUserId: session.userId,
+            action: "login",
+            entityType: "user",
+            entityId: session.userId,
+            ...meta,
+          })
+        },
+      },
+      delete: {
+        after: async (session, context) => {
+          const meta = auditClientMeta(context?.request, {
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+          })
+          await writeAuditLogSafe({
+            actorUserId: session.userId,
+            action: "logout",
+            entityType: "user",
+            entityId: session.userId,
+            ...meta,
+          })
         },
       },
     },

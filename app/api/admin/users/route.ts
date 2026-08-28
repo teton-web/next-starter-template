@@ -11,7 +11,7 @@ import {
   requireUserId,
 } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
-import { writeAuditLog } from "@/lib/admin/audit"
+import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { sanitizeCapabilities } from "@/lib/auth/capabilities"
 import {
   GENERIC_INVITE_ERROR,
@@ -202,6 +202,7 @@ export async function POST(request: Request) {
       action: "invite",
       entityType: "user",
       entityId: userId,
+      ...auditClientMeta(request),
     })
 
     return jsonOk({ id: userId, email, name: parsed.name, capabilities }, 201)

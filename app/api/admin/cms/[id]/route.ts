@@ -4,9 +4,10 @@ import { db } from "@/lib/db"
 import { cmsEntries, cmsRevisions, mediaUsages } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
-import { writeAuditLog } from "@/lib/admin/audit"
+import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { isReservedSlug, isValidSlug, routeForEntry } from "@/lib/cms/slugs"
 import { sanitizeCmsHtml } from "@/lib/cms/sanitize"
+import { canHardDeleteCmsEntry } from "@/lib/cms/delete-pure"
 import { revalidatePublic } from "@/lib/cache/public-cache"
 
 const patchSchema = z.object({
@@ -146,8 +147,44 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     revalidatePublic(entry.entryType === "article" ? "articles" : "pages")
-    await writeAuditLog({ actorUserId: userId, action: "update", entityType: "cms_entry", entityId: id })
+    await writeAuditLog({
+      actorUserId: userId,
+      action: "update",
+      entityType: "cms_entry",
+      entityId: id,
+      ...auditClientMeta(request),
+    })
     return jsonOk({ success: true, status, routePath })
+  } catch (error) {
+    return errorResponse(error)
+  }
+}
+
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const userId = await requireEditor()
+    if (userId instanceof Response) return userId
+    const { id } = await context.params
+    const [entry] = await db.select().from(cmsEntries).where(eq(cmsEntries.id, id)).limit(1)
+    if (!entry) throw new HttpError(404, "Entry not found")
+    if (!canHardDeleteCmsEntry(entry.status)) {
+      throw new HttpError(409, "Only draft entries can be deleted")
+    }
+
+    await db
+      .delete(mediaUsages)
+      .where(and(eq(mediaUsages.entityType, "cms_entry"), eq(mediaUsages.entityId, id)))
+    await db.delete(cmsEntries).where(eq(cmsEntries.id, id))
+
+    revalidatePublic(entry.entryType === "article" ? "articles" : "pages")
+    await writeAuditLog({
+      actorUserId: userId,
+      action: "delete",
+      entityType: "cms_entry",
+      entityId: id,
+      ...auditClientMeta(request),
+    })
+    return jsonOk({ success: true })
   } catch (error) {
     return errorResponse(error)
   }

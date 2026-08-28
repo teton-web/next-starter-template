@@ -97,7 +97,12 @@ export default async function AdminPage() {
 
       {canAdmin ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Recent activity</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Recent activity</h2>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/audit">View audit</Link>
+            </Button>
+          </div>
           {auditLogs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent activity yet.</p>
           ) : (
