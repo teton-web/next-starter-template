@@ -3,7 +3,7 @@ import { auditLogs } from "@/lib/db/schema"
 
 export async function writeAuditLog(input: {
   actorUserId?: string | null
-  action: "create" | "update" | "delete"
+  action: "create" | "update" | "delete" | "invite"
   entityType: string
   entityId: string
   metadata?: Record<string, unknown>
