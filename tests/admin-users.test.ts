@@ -400,13 +400,13 @@ mock.module("@/lib/db", () => ({
   db: mockedDb,
 }))
 
-function useAdminUsersDb() {
+function setupAdminUsersDb() {
   setDbTransaction((fn) => fn(createTx()))
   resetSharedDbExecute()
   resetSharedDbInsert()
 }
 
-useAdminUsersDb()
+setupAdminUsersDb()
 
 const { POST } = await import("@/app/api/admin/users/route")
 const { PATCH } = await import("@/app/api/admin/users/[id]/route")
@@ -451,7 +451,7 @@ describe("POST /api/admin/users", () => {
     lockedRows = []
     transactions = []
     resetMemoryRateLimits()
-    useAdminUsersDb()
+    setupAdminUsersDb()
     delete process.env.RESEND_API_KEY
     delete process.env.EMAIL_FROM
     delete process.env.NEXT_PUBLIC_BASE_URL
@@ -631,7 +631,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     ]
     transactions = []
     resetMemoryRateLimits()
-    useAdminUsersDb()
+    setupAdminUsersDb()
   })
 
   test("deletedAt=true deletes outstanding reset-password tokens", async () => {
