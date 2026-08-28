@@ -1,9 +1,11 @@
 "use client"
 
 import useSWR from "swr"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { cmsPreviewPath } from "@/lib/cms/preview-pure"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CmsRevisionList, type CmsRevisionListItem } from "@/components/admin/cms-revision-list"
@@ -82,6 +84,9 @@ export default function EditCmsEntryPage() {
       <Textarea rows={16} value={entry.body} onChange={(e) => setDraft({ ...entry, body: e.target.value })} />
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline">
+          <Link href={cmsPreviewPath(entry.id)}>Preview</Link>
+        </Button>
         <Button onClick={() => void save()}>Save draft</Button>
         <Button variant="outline" onClick={() => void save("in_review")}>Submit review</Button>
         <Button onClick={() => void save("published")}>Publish</Button>

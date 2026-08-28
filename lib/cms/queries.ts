@@ -1,6 +1,8 @@
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, or } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { cmsEntries, locales, mediaAssets } from "@/lib/db/schema"
+import { isLivePublishedEntry } from "@/lib/cms/live-pure"
+import { cmsPreviewKeyCandidates, pickCmsPreviewEntry } from "@/lib/cms/preview-pure"
 
 export async function getDefaultLocaleId() {
   const rows = await db.select().from(locales).where(eq(locales.isDefault, true)).limit(1)
@@ -21,15 +23,45 @@ export async function getPublishedEntryByPath(routePath: string) {
     .where(and(eq(cmsEntries.routePath, routePath), eq(cmsEntries.status, "published")))
     .limit(1)
   if (!rows.length) return null
+  if (!isLivePublishedEntry(rows[0].entry)) return null
   return rows[0]
 }
 
 export type PublishedCmsRow = NonNullable<Awaited<ReturnType<typeof getPublishedEntryByPath>>>
 
 export async function listPublishedEntries(entryType: "page" | "article") {
-  return db
+  const rows = await db
     .select()
     .from(cmsEntries)
     .where(and(eq(cmsEntries.entryType, entryType), eq(cmsEntries.status, "published")))
     .orderBy(desc(cmsEntries.publishedAt))
+  return rows.filter((row) => isLivePublishedEntry(row))
+}
+
+export async function getCmsEntryForPreview(idOrSlug: string) {
+  const { id, slug, routePaths } = cmsPreviewKeyCandidates(idOrSlug)
+  if (!id) return null
+
+  const rows = await db
+    .select({
+      entry: cmsEntries,
+      heroUrl: mediaAssets.storageUrl,
+      heroAlt: mediaAssets.altText,
+    })
+    .from(cmsEntries)
+    .leftJoin(mediaAssets, eq(cmsEntries.heroMediaId, mediaAssets.id))
+    .where(
+      or(
+        eq(cmsEntries.id, id),
+        eq(cmsEntries.slug, slug),
+        ...routePaths.map((path) => eq(cmsEntries.routePath, path)),
+      ),
+    )
+
+  const picked = pickCmsPreviewEntry(
+    rows.map((row) => row.entry),
+    id,
+  )
+  if (!picked) return null
+  return rows.find((row) => row.entry.id === picked.id) ?? null
 }

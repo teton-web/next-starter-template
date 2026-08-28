@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { CmsDocument } from "@/components/cms-document"
 import { getPublishedEntryByPath } from "@/lib/cms/queries"
 import { routeForEntry } from "@/lib/cms/slugs"
 
@@ -27,13 +28,11 @@ export default async function ArticlePage({ params }: Props) {
   if (!row) notFound()
 
   return (
-    <article className="mx-auto max-w-2xl px-4 py-16">
-      {row.heroUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={row.heroUrl} alt={row.heroAlt ?? ""} className="mb-8 w-full rounded-lg" />
-      ) : null}
-      <h1 className="text-4xl font-bold">{row.entry.title}</h1>
-      <div className="mt-8 space-y-4" dangerouslySetInnerHTML={{ __html: row.entry.body }} />
-    </article>
+    <CmsDocument
+      title={row.entry.title}
+      body={row.entry.body}
+      heroUrl={row.heroUrl}
+      heroAlt={row.heroAlt}
+    />
   )
 }

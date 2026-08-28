@@ -13,6 +13,7 @@ import {
   truncateMessage,
 } from "@/lib/admin/dashboard-pure"
 import { Button } from "@/components/ui/button"
+import { cmsPreviewPath } from "@/lib/cms/preview-pure"
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -58,9 +59,14 @@ export default async function AdminPage() {
                       {entry.entryType} · {entry.status} · {entry.routePath}
                     </p>
                   </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/admin/content/${entry.id}`}>Edit</Link>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={cmsPreviewPath(entry.id)}>Preview</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/admin/content/${entry.id}`}>Edit</Link>
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -70,6 +70,8 @@ describe("source invariants", () => {
 
   test("sitemap does not advertise /admin", () => {
     expect(read("app/sitemap.ts")).not.toContain("/admin")
+    expect(read("app/sitemap.ts")).not.toContain("preview")
+    expect(read("app/sitemap.ts")).toContain("listPublishedEntries")
   })
 
   test("hardcoded personal admin email is gone", () => {
