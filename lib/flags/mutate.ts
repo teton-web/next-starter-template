@@ -6,10 +6,12 @@ import { db } from "@/lib/db"
 import { featureFlags } from "@/lib/db/schema"
 import { FLAG_CATALOG, isFlagKey, isOptionalFlagKey, isPlatformFlagKey, type FlagKey } from "./catalog"
 import { invalidateFeatureFlagCache, setCachedDbEnabled } from "./cache"
+import { optionalDbOverlay } from "./status"
+import { auditSafeFlagConfig, storedConfigWithoutSecrets } from "./site-gate-password"
 
 export type SetFeatureFlagInput = {
   key: string
-  enabled: boolean
+  enabled?: boolean
   config?: Record<string, unknown>
   actorUserId?: string | null
   request?: Request | { headers?: Headers | null } | null
@@ -61,10 +63,16 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       .for("update")
 
     const previous = existing[0]
-    const previousConfig = previous?.config ?? {}
-    const nextConfig = input.config ?? previousConfig
+    const previousConfig = storedConfigWithoutSecrets(previous?.config ?? {})
+    const nextConfig = storedConfigWithoutSecrets(
+      input.config === undefined ? previousConfig : { ...previousConfig, ...input.config },
+    )
+    const nextEnabled = input.enabled ?? previous?.enabled ?? definition.defaultEnabled
+    if (isPlatformFlagKey(key) && nextEnabled === false) {
+      throw new Error(`Platform feature ${key} cannot be turned off in the database`)
+    }
 
-    if (previous && previous.enabled === input.enabled && jsonEqual(previousConfig, nextConfig)) {
+    if (previous && previous.enabled === nextEnabled && jsonEqual(previousConfig, nextConfig)) {
       return { wrote: false as const, key, enabled: previous.enabled, config: previousConfig }
     }
 
@@ -73,7 +81,7 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       .insert(featureFlags)
       .values({
         key,
-        enabled: input.enabled,
+        enabled: nextEnabled,
         config: nextConfig,
         updatedAt,
         updatedByUserId,
@@ -81,7 +89,7 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       .onConflictDoUpdate({
         target: featureFlags.key,
         set: {
-          enabled: input.enabled,
+          enabled: nextEnabled,
           config: nextConfig,
           updatedAt,
           updatedByUserId,
@@ -97,8 +105,11 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
         metadata: {
           key,
           old: previous?.enabled ?? definition.defaultEnabled,
-          new: input.enabled,
-          config: { old: previousConfig, new: nextConfig },
+          new: nextEnabled,
+          config: {
+            old: auditSafeFlagConfig(previousConfig),
+            new: auditSafeFlagConfig(nextConfig),
+          },
         },
         ipAddress,
         userAgent,
@@ -106,13 +117,16 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       tx,
     )
 
-    return { wrote: true as const, key, enabled: input.enabled, config: nextConfig }
+    return { wrote: true as const, key, enabled: nextEnabled, config: nextConfig }
   })
 
   if (outcome.wrote) {
     invalidateFeatureFlagCache()
     if (isOptionalFlagKey(outcome.key)) {
-      setCachedDbEnabled(outcome.key, outcome.enabled)
+      setCachedDbEnabled(
+        outcome.key,
+        optionalDbOverlay(outcome.key, { enabled: outcome.enabled, config: outcome.config }) ?? outcome.enabled,
+      )
     }
   }
 

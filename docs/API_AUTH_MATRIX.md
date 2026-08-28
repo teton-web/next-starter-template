@@ -12,6 +12,7 @@ Update this table whenever you add a Route Handler.
 | `GET/POST /api/admin/users` | Session + `admin` capability | Invite-only. POST `{ email, name, capabilities }` → 201 `{ id, email, name, capabilities, emailSent, setPasswordUrl? }`. `mustChangePassword` true. Welcome email when Resend is configured (`emailSent: true`, no URL). When email is skipped, 201 includes `setPasswordUrl` and `/admin/users` shows a copyable link. Missing origin is 500. Generic error on duplicate email (no enumeration). Modest rate limit on POST. |
 | `PATCH /api/admin/users/:id` | Session + `admin` capability | `{ capabilities }` (sanitized) or `{ deletedAt: true }`. Cannot strip/soft-delete the last remaining admin. |
 | `GET /api/admin/audit` | Session + `admin` capability | Paginated newest-first audit log (`limit`/`offset`). Read-only; no create/update/delete. |
+| `GET/PATCH /api/admin/features` | Session + `admin` capability | Catalog list with resolved state, kill-switch / missing-key / dependency reasons. PATCH `{ key, enabled?, password? }`. Platform cannot be turned off. `FEATURE_<KEY>=0` rejects `enabled: true` (409); password-only / config updates still persist. Site-gate password is scrypt-hashed into `config.passwordHash`; GET and audit metadata never return password or hash. PATCH `Set-Cookie: ff_overrides` is a snapshot of all optional DB overlays. |
 
 Site gate (preview/production only) runs in `proxy.ts` before page auth. `GET /api/health` is exempt, like static assets. Cron/webhook bypasses should be added explicitly if you introduce those routes.
 

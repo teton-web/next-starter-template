@@ -76,7 +76,7 @@ describe("audit source", () => {
     expect(api).not.toContain("export async function POST")
     expect(api).not.toContain("export async function PATCH")
     expect(api).not.toContain("export async function DELETE")
-    expect(read("app/admin/layout.tsx")).toContain('href="/admin/audit"')
+    expect(read("app/admin/admin-shell.tsx")).toContain('href="/admin/audit"')
     expect(writer).toContain("desc(auditLogs.createdAt)")
     expect(writer).toContain('"login"')
     expect(writer).toContain('"logout"')
