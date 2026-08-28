@@ -1,5 +1,5 @@
-// Catalog/env only — import isEnabled from ./resolve and setFeatureFlag from ./mutate
-// (those modules are server-only and load Neon).
+// Catalog/env only. Node `isEnabled`: ./resolve (Neon + ≤60s cache).
+// Proxy: ./proxy-resolve (no db). Mutations: ./mutate.
 export {
   FLAG_CATALOG,
   FLAG_KEYS,
@@ -7,6 +7,7 @@ export {
   OPTIONAL_FLAG_KEYS,
   PLATFORM_FLAG_KEYS,
   isFlagKey,
+  isOptionalFlagKey,
   isPlatformFlagKey,
   type FlagDefinition,
   type FlagKey,

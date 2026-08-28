@@ -9,6 +9,13 @@ import {
   shouldRejectApiForMustChangePassword,
 } from "@/lib/auth/must-change-password-pure"
 import {
+  FEATURE_FLAG_CACHE_COOKIE,
+  encodeFeatureFlagCacheCookie,
+  featureFlagCacheCookieAttrs,
+  getWarmFlagCacheSnapshot,
+  resolveProxyFlags,
+} from "@/lib/flags/proxy-resolve"
+import {
   isSiteGateEnabled,
   safeSiteGateNext,
   SITE_GATE_COOKIE,
@@ -40,8 +47,22 @@ function isHtmlNavigation(request: NextRequest) {
   return request.method === "GET" && accept.includes("text/html")
 }
 
+async function withFlagCacheCookie(response: NextResponse) {
+  const snapshot = getWarmFlagCacheSnapshot()
+  if (!snapshot) return response
+  const value = await encodeFeatureFlagCacheCookie(snapshot.overrides, {
+    iat: snapshot.iat,
+    exp: snapshot.exp,
+  })
+  if (!value) return response
+  response.cookies.set(FEATURE_FLAG_CACHE_COOKIE, value, featureFlagCacheCookieAttrs(snapshot.exp))
+  return response
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  // Cookie overlay only — catalog + Doppler + ff_overrides. Never Neon.
+  await resolveProxyFlags(request.cookies.get(FEATURE_FLAG_CACHE_COOKIE)?.value)
   const password = siteGatePassword()
 
   if (isSiteGateEnabled() && password && !isSiteGateExempt(pathname)) {
@@ -52,28 +73,32 @@ export async function proxy(request: NextRequest) {
 
     if (isGateRoute(pathname)) {
       if (hasGateAccess && pathname === "/site-gate") {
-        return NextResponse.redirect(
-          new URL(safeSiteGateNext(request.nextUrl.searchParams.get("next")), request.url),
+        return withFlagCacheCookie(
+          NextResponse.redirect(
+            new URL(safeSiteGateNext(request.nextUrl.searchParams.get("next")), request.url),
+          ),
         )
       }
-      return NextResponse.next()
+      return withFlagCacheCookie(NextResponse.next())
     }
 
     if (!hasGateAccess) {
       if (pathname.startsWith("/api/") && !isHtmlNavigation(request)) {
-        return NextResponse.json({ error: "Site gate access required." }, { status: 401 })
+        return withFlagCacheCookie(
+          NextResponse.json({ error: "Site gate access required." }, { status: 401 }),
+        )
       }
 
       const gate = new URL("/site-gate", request.url)
       gate.searchParams.set("next", safeSiteGateNext(`${pathname}${search}`))
-      return NextResponse.redirect(gate)
+      return withFlagCacheCookie(NextResponse.redirect(gate))
     }
   }
 
   if (pathname === "/admin/login") {
     const login = new URL("/login", request.url)
     login.searchParams.set("callbackUrl", `/admin${search}`)
-    return NextResponse.redirect(login)
+    return withFlagCacheCookie(NextResponse.redirect(login))
   }
 
   if (isAdminPagePath(pathname)) {
@@ -81,7 +106,7 @@ export async function proxy(request: NextRequest) {
     if (!session || await isAccountBlocked(session.user.id)) {
       const login = new URL("/login", request.url)
       login.searchParams.set("callbackUrl", `${pathname}${search}`)
-      return NextResponse.redirect(login)
+      return withFlagCacheCookie(NextResponse.redirect(login))
     }
 
     const mustChangePassword = session.user.mustChangePassword === true
@@ -91,18 +116,18 @@ export async function proxy(request: NextRequest) {
       if (dest !== "/admin/account") {
         account.searchParams.set("callbackUrl", dest)
       }
-      return NextResponse.redirect(account)
+      return withFlagCacheCookie(NextResponse.redirect(account))
     }
   }
 
   if (shouldRejectApiForMustChangePassword(pathname)) {
     const session = await auth.api.getSession({ headers: request.headers })
     if (session && !await isAccountBlocked(session.user.id) && session.user.mustChangePassword === true) {
-      return passwordChangeRequiredResponse()
+      return withFlagCacheCookie(passwordChangeRequiredResponse())
     }
   }
 
-  return NextResponse.next()
+  return withFlagCacheCookie(NextResponse.next())
 }
 
 export const config = {

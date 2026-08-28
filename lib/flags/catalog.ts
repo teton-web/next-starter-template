@@ -95,3 +95,7 @@ export function isFlagKey(key: string): key is FlagKey {
 export function isPlatformFlagKey(key: string): key is PlatformFlagKey {
   return (PLATFORM_FLAG_KEYS as readonly string[]).includes(key)
 }
+
+export function isOptionalFlagKey(key: string): key is OptionalFlagKey {
+  return (OPTIONAL_FLAG_KEYS as readonly string[]).includes(key)
+}

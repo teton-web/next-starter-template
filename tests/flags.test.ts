@@ -17,6 +17,13 @@ import {
   OPTIONAL_FLAG_KEYS,
   PLATFORM_FLAG_KEYS,
 } from "@/lib/flags/catalog"
+import {
+  cacheEpoch,
+  getCachedDbEnabled,
+  invalidateFeatureFlagCache,
+  resetFeatureFlagCache,
+  setCachedDbEnabled,
+} from "@/lib/flags/cache"
 import { featureEnvName, isFeatureHardOff, requiredEnvFor } from "@/lib/flags/env"
 
 const { isEnabled, resolveEnabled } = await import("@/lib/flags/resolve")
@@ -114,6 +121,7 @@ describe("feature flag catalog", () => {
 
 describe("isEnabled resolution", () => {
   afterEach(() => {
+    resetFeatureFlagCache()
     resetSharedDbInsert()
     resetSharedDbTransaction()
     delete (mockedDb as { select?: unknown }).select
@@ -287,8 +295,17 @@ describe("isEnabled resolution", () => {
     expect(await isEnabled("waitlist", { env: {} })).toBe(false)
     expect(dbSelect).toHaveBeenCalled()
 
+    resetFeatureFlagCache()
     installFlagSelect([{ enabled: true, config: {} }])
     expect(await isEnabled("waitlist", { env: {} })).toBe(true)
+  })
+
+  test("warm cache skips a second select", async () => {
+    installFlagSelect([{ enabled: true, config: {} }])
+    expect(await isEnabled("waitlist", { env: {} })).toBe(true)
+    dbSelect.mockClear()
+    expect(await isEnabled("waitlist", { env: {} })).toBe(true)
+    expect(dbSelect).not.toHaveBeenCalled()
   })
 
   test("Doppler hard-off skips DB and stays false if select would throw", async () => {
@@ -308,6 +325,47 @@ describe("isEnabled resolution", () => {
       throw new Error("neon unavailable")
     })
     expect(await isEnabled("auth", { env: {} })).toBe(true)
+    expect(dbSelect).not.toHaveBeenCalled()
+  })
+
+  test("optional flags fail closed when Neon throws; platform stays up", async () => {
+    installFlagSelect()
+    dbSelectLimit.mockImplementation(async () => {
+      throw new Error("neon unavailable")
+    })
+    expect(await isEnabled("waitlist", { env: {} })).toBe(false)
+    expect(await isEnabled("stripe", { env: stripeKeys })).toBe(false)
+    expect(await isEnabled("auth", { env: {} })).toBe(true)
+    expect(await isEnabled("admin", { env: {} })).toBe(true)
+    expect(dbSelect).toHaveBeenCalled()
+
+    dbSelect.mockClear()
+    dbSelectLimit.mockImplementation(async () => {
+      throw new Error("should not retry within TTL")
+    })
+    expect(await isEnabled("waitlist", { env: {} })).toBe(false)
+    expect(dbSelect).not.toHaveBeenCalled()
+  })
+
+  test("in-flight select does not refill after invalidate", async () => {
+    let resolveRows: (rows: FlagRow[]) => void = () => {}
+    installFlagSelect()
+    dbSelectLimit.mockImplementation(
+      () =>
+        new Promise<FlagRow[]>((resolve) => {
+          resolveRows = resolve
+        }),
+    )
+    const pending = isEnabled("waitlist", { env: {} })
+    const staleEpoch = cacheEpoch()
+    invalidateFeatureFlagCache()
+    setCachedDbEnabled("waitlist", false)
+    expect(setCachedDbEnabled("waitlist", true, { epoch: staleEpoch })).toBe(false)
+    expect(getCachedDbEnabled("waitlist")).toBe(false)
+    resolveRows([{ enabled: true, config: {} }])
+    expect(await pending).toBe(false)
+    dbSelect.mockClear()
+    expect(await isEnabled("waitlist", { env: {} })).toBe(false)
     expect(dbSelect).not.toHaveBeenCalled()
   })
 })
@@ -340,6 +398,7 @@ describe("setFeatureFlag", () => {
   })
 
   afterEach(() => {
+    resetFeatureFlagCache()
     resetSharedDbInsert()
     resetSharedDbTransaction()
     delete (mockedDb as { select?: unknown }).select
@@ -449,6 +508,18 @@ describe("setFeatureFlag", () => {
     expect(dbSelect).not.toHaveBeenCalled()
     expect(dbInsertValues).not.toHaveBeenCalled()
     expect(dbInsert).not.toHaveBeenCalled()
+  })
+
+  test("invalidates a warm overlay so the next isEnabled reads the new row", async () => {
+    setCachedDbEnabled("waitlist", true)
+    expect(await isEnabled("waitlist", { env: {} })).toBe(true)
+    expect(dbSelect).not.toHaveBeenCalled()
+
+    selectRows = [{ enabled: true, config: {} }]
+    await setFeatureFlag({ key: "waitlist", enabled: false })
+    selectRows = [{ enabled: false, config: {} }]
+    expect(await isEnabled("waitlist", { env: {} })).toBe(false)
+    expect(dbSelect).toHaveBeenCalled()
   })
 
   test("rejects turning platform flags off", async () => {
