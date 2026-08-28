@@ -3,6 +3,7 @@ import type { EnvMap } from "./env"
 
 /** Isolate-local DB overlay. Must stay ≤ 60s from each entry's issuedAt. */
 export const FEATURE_FLAG_CACHE_TTL_MS = 30_000
+export const SITE_GATE_PUBLIC_STATE_TTL_MS = 15_000
 
 export const FEATURE_FLAG_CACHE_COOKIE = "ff_overrides"
 
@@ -16,7 +17,21 @@ type MemoryEntry = {
   expiresAt: number
 }
 
+type SiteGateHashEntry = {
+  present: boolean
+  issuedAt: number
+  expiresAt: number
+}
+
+type SiteGatePublicEnforceEntry = {
+  enforce: boolean
+  issuedAt: number
+  expiresAt: number
+}
+
 let entries: Partial<Record<OptionalFlagKey, MemoryEntry>> = {}
+let siteGateHashEntry: SiteGateHashEntry | undefined
+let siteGatePublicEnforceEntry: SiteGatePublicEnforceEntry | undefined
 let epoch = 0
 let lastInvalidatedAt = 0
 
@@ -46,10 +61,21 @@ export function getCachedOptionalOverrides(now = Date.now()): OptionalFlagOverri
   return any ? overrides : null
 }
 
+function liveSiteGateHash(now: number): SiteGateHashEntry | undefined {
+  const entry = siteGateHashEntry
+  if (!entry) return undefined
+  if (entry.expiresAt <= now) {
+    siteGateHashEntry = undefined
+    return undefined
+  }
+  return entry
+}
+
 export function getWarmFlagCacheSnapshot(now = Date.now()): {
   overrides: OptionalFlagOverrides
   iat: number
   exp: number
+  siteGateHashPresent?: boolean
 } | null {
   const overrides: OptionalFlagOverrides = {}
   let iat = Number.POSITIVE_INFINITY
@@ -63,8 +89,19 @@ export function getWarmFlagCacheSnapshot(now = Date.now()): {
     exp = Math.min(exp, entry.expiresAt)
     any = true
   }
+  const hashEntry = liveSiteGateHash(now)
+  if (hashEntry) {
+    iat = Math.min(iat, hashEntry.issuedAt)
+    exp = Math.min(exp, hashEntry.expiresAt)
+    any = true
+  }
   if (!any || exp <= now) return null
-  return { overrides, iat, exp }
+  return {
+    overrides,
+    iat,
+    exp,
+    siteGateHashPresent: hashEntry?.present,
+  }
 }
 
 /** `undefined` = cold miss; `null` = known no-row / fail-closed. */
@@ -74,10 +111,62 @@ export function getCachedDbEnabled(key: OptionalFlagKey, now = Date.now()): bool
   return entry.enabled
 }
 
+export function getCachedSiteGateHashPresent(now = Date.now()): boolean | undefined {
+  return liveSiteGateHash(now)?.present
+}
+
+function liveSiteGatePublicEnforce(now: number): SiteGatePublicEnforceEntry | undefined {
+  const entry = siteGatePublicEnforceEntry
+  if (!entry) return undefined
+  if (entry.expiresAt <= now) {
+    siteGatePublicEnforceEntry = undefined
+    return undefined
+  }
+  return entry
+}
+
+export function getCachedSiteGatePublicEnforce(now = Date.now()): boolean | undefined {
+  return liveSiteGatePublicEnforce(now)?.enforce
+}
+
+export function setCachedSiteGatePublicEnforce(
+  enforce: boolean,
+  options: { now?: number; epoch?: number } = {},
+): boolean {
+  if (options.epoch !== undefined && options.epoch !== epoch) return false
+  const now = options.now ?? Date.now()
+  siteGatePublicEnforceEntry = {
+    enforce,
+    issuedAt: now,
+    expiresAt: now + SITE_GATE_PUBLIC_STATE_TTL_MS,
+  }
+  return true
+}
+
+export function isSiteGateOverlayCold(now = Date.now()): boolean {
+  return getCachedDbEnabled("site_gate", now) === undefined && getCachedSiteGateHashPresent(now) === undefined
+}
+
+export function setCachedSiteGateHashPresent(
+  present: boolean,
+  options: { now?: number; epoch?: number; issuedAt?: number; expiresAt?: number } = {},
+): boolean {
+  if (options.epoch !== undefined && options.epoch !== epoch) return false
+  const now = options.now ?? Date.now()
+  const issuedAt = options.issuedAt ?? now
+  const expiresAt = Math.min(
+    options.expiresAt ?? issuedAt + FEATURE_FLAG_CACHE_TTL_MS,
+    issuedAt + FEATURE_FLAG_CACHE_TTL_MS,
+  )
+  if (expiresAt <= now) return false
+  siteGateHashEntry = { present, issuedAt, expiresAt }
+  return true
+}
+
 export function setCachedDbEnabled(
   key: OptionalFlagKey,
   enabled: boolean | null,
-  options: { now?: number; epoch?: number } = {},
+  options: { now?: number; epoch?: number; siteGateHashPresent?: boolean } = {},
 ): boolean {
   if (options.epoch !== undefined && options.epoch !== epoch) return false
   const now = options.now ?? Date.now()
@@ -86,12 +175,21 @@ export function setCachedDbEnabled(
     issuedAt: now,
     expiresAt: now + FEATURE_FLAG_CACHE_TTL_MS,
   }
+  if (key === "site_gate" && options.siteGateHashPresent !== undefined) {
+    setCachedSiteGateHashPresent(options.siteGateHashPresent, { now, epoch: options.epoch })
+  }
   return true
 }
 
 export function setCachedOptionalOverrides(
   overrides: OptionalFlagOverrides,
-  options: { now?: number; issuedAt?: number; expiresAt?: number; epoch?: number } = {},
+  options: {
+    now?: number
+    issuedAt?: number
+    expiresAt?: number
+    epoch?: number
+    siteGateHashPresent?: boolean
+  } = {},
 ): boolean {
   if (options.epoch !== undefined && options.epoch !== epoch) return false
   const now = options.now ?? Date.now()
@@ -109,17 +207,25 @@ export function setCachedOptionalOverrides(
     entries[key] = { enabled, issuedAt, expiresAt }
     wrote = true
   }
+  if (options.siteGateHashPresent !== undefined && !liveSiteGateHash(now)) {
+    siteGateHashEntry = { present: options.siteGateHashPresent, issuedAt, expiresAt }
+    wrote = true
+  }
   return wrote
 }
 
 export function invalidateFeatureFlagCache(now = Date.now()) {
   entries = {}
+  siteGateHashEntry = undefined
+  siteGatePublicEnforceEntry = undefined
   lastInvalidatedAt = now
   epoch += 1
 }
 
 export function resetFeatureFlagCache() {
   entries = {}
+  siteGateHashEntry = undefined
+  siteGatePublicEnforceEntry = undefined
   lastInvalidatedAt = 0
   epoch = 0
 }
@@ -139,6 +245,19 @@ export function overlayDbEnabled(
   if (!cookieOverrides || !Object.hasOwn(cookieOverrides, key)) return undefined
   if (cookieIssuedAt !== undefined && cookieIssuedAt <= lastInvalidatedAt) return undefined
   return cookieOverrides[key] ?? null
+}
+
+/** Memory wins when warm. `undefined` = cold / unknown (leftover env may still apply). */
+export function overlaySiteGateHashPresent(
+  cookieHashPresent: boolean | undefined,
+  cookieIssuedAt?: number,
+  now = Date.now(),
+): boolean | undefined {
+  const cached = getCachedSiteGateHashPresent(now)
+  if (cached !== undefined) return cached
+  if (cookieHashPresent === undefined) return undefined
+  if (cookieIssuedAt !== undefined && cookieIssuedAt <= lastInvalidatedAt) return undefined
+  return cookieHashPresent
 }
 
 export function sanitizeOptionalOverrides(input: Record<string, unknown>): OptionalFlagOverrides {
@@ -201,11 +320,18 @@ export type DecodedFlagCacheCookie = {
   overrides: OptionalFlagOverrides
   iat: number
   exp: number
+  siteGateHashPresent?: boolean
 }
 
 export async function encodeFeatureFlagCacheCookie(
   overrides: OptionalFlagOverrides,
-  options: { env?: EnvMap; now?: number; iat?: number; exp?: number } = {},
+  options: {
+    env?: EnvMap
+    now?: number
+    iat?: number
+    exp?: number
+    siteGateHashPresent?: boolean
+  } = {},
 ): Promise<string | null> {
   const secret = flagCacheSecret(options.env)
   if (!secret) return null
@@ -213,12 +339,15 @@ export async function encodeFeatureFlagCacheCookie(
   const iat = options.iat ?? now
   const exp = Math.min(options.exp ?? iat + FEATURE_FLAG_CACHE_TTL_MS, iat + FEATURE_FLAG_CACHE_TTL_MS)
   if (exp <= now) return null
-  const body = JSON.stringify({
+  const body: { iat: number; exp: number; o: OptionalFlagOverrides; sgh?: boolean } = {
     iat,
     exp,
     o: sanitizeOptionalOverrides(overrides),
-  })
-  const payload = base64UrlEncode(new TextEncoder().encode(body))
+  }
+  if (typeof options.siteGateHashPresent === "boolean") {
+    body.sgh = options.siteGateHashPresent
+  }
+  const payload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(body)))
   const signature = await hmacSha256(secret, `${COOKIE_VERSION}.${payload}`)
   return `${COOKIE_VERSION}.${payload}.${signature}`
 }
@@ -231,6 +360,7 @@ export async function encodeWarmFlagCacheCookie(options: { env?: EnvMap; now?: n
     now: options.now,
     iat: snapshot.iat,
     exp: snapshot.exp,
+    siteGateHashPresent: snapshot.siteGateHashPresent,
   })
 }
 
@@ -265,6 +395,7 @@ export async function decodeFeatureFlagCacheCookie(
       iat?: unknown
       exp?: unknown
       o?: unknown
+      sgh?: unknown
     }
     const iat = json.iat
     const exp = json.exp
@@ -279,6 +410,7 @@ export async function decodeFeatureFlagCacheCookie(
       iat,
       exp,
       overrides: sanitizeOptionalOverrides(json.o as Record<string, unknown>),
+      siteGateHashPresent: typeof json.sgh === "boolean" ? json.sgh : undefined,
     }
   } catch {
     return null

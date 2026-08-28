@@ -1,4 +1,4 @@
-import { randomBytes, scrypt as scryptCb } from "node:crypto"
+import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto"
 
 export const SITE_GATE_PASSWORD_HASH_KEY = "passwordHash"
 
@@ -29,6 +29,32 @@ export async function hashSiteGatePassword(plaintext: string): Promise<string> {
   const salt = randomBytes(16)
   const derived = await scryptHash(password, salt)
   return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt.toString("base64url")}$${derived.toString("base64url")}`
+}
+
+function parseStoredHash(stored: string): { salt: Buffer; hash: Buffer } | null {
+  const parts = stored.split("$")
+  if (parts.length !== 6 || parts[0] !== "scrypt") return null
+  const n = Number(parts[1])
+  const r = Number(parts[2])
+  const p = Number(parts[3])
+  if (n !== SCRYPT_N || r !== SCRYPT_R || p !== SCRYPT_P) return null
+  if (!parts[4] || !parts[5]) return null
+  try {
+    const salt = Buffer.from(parts[4], "base64url")
+    const hash = Buffer.from(parts[5], "base64url")
+    if (salt.length === 0 || hash.length !== KEY_LEN) return null
+    return { salt, hash }
+  } catch {
+    return null
+  }
+}
+
+export async function verifySiteGatePassword(plaintext: string, stored: string): Promise<boolean> {
+  const parsed = parseStoredHash(stored)
+  if (!parsed) return false
+  const derived = await scryptHash(plaintext.normalize("NFKC"), parsed.salt)
+  if (derived.length !== parsed.hash.length) return false
+  return timingSafeEqual(derived, parsed.hash)
 }
 
 export function storedConfigWithoutSecrets(

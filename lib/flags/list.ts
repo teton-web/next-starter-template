@@ -2,7 +2,12 @@ import "server-only"
 
 import { db } from "@/lib/db"
 import { featureFlags } from "@/lib/db/schema"
-import { listFlagStatuses, optionalOverlaysFromRows, type FlagStatus } from "./status"
+import {
+  listFlagStatuses,
+  optionalOverlaysFromRows,
+  siteGateHashPresentFromRows,
+  type FlagStatus,
+} from "./status"
 import type { OptionalFlagOverrides } from "./cache"
 import type { EnvMap } from "./env"
 
@@ -34,10 +39,12 @@ export async function loadFlagStatuses(env: EnvMap = process.env): Promise<FlagS
 export async function loadAdminFlagState(env: EnvMap = process.env): Promise<{
   flags: FlagStatus[]
   overlays: OptionalFlagOverrides
+  siteGateHashPresent: boolean
 }> {
   const rows = await loadFeatureFlagRows()
   return {
     flags: listFlagStatuses(rows, env),
     overlays: optionalOverlaysFromRows(rows),
+    siteGateHashPresent: siteGateHashPresentFromRows(rows),
   }
 }

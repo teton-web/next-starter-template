@@ -7,7 +7,11 @@ import { featureFlags } from "@/lib/db/schema"
 import { FLAG_CATALOG, isFlagKey, isOptionalFlagKey, isPlatformFlagKey, type FlagKey } from "./catalog"
 import { invalidateFeatureFlagCache, setCachedDbEnabled } from "./cache"
 import { optionalDbOverlay } from "./status"
-import { auditSafeFlagConfig, storedConfigWithoutSecrets } from "./site-gate-password"
+import {
+  auditSafeFlagConfig,
+  hasStoredSiteGateHash,
+  storedConfigWithoutSecrets,
+} from "./site-gate-password"
 
 export type SetFeatureFlagInput = {
   key: string
@@ -126,6 +130,10 @@ export async function setFeatureFlag(input: SetFeatureFlagInput): Promise<{
       setCachedDbEnabled(
         outcome.key,
         optionalDbOverlay(outcome.key, { enabled: outcome.enabled, config: outcome.config }) ?? outcome.enabled,
+        {
+          siteGateHashPresent:
+            outcome.key === "site_gate" ? hasStoredSiteGateHash(outcome.config) : undefined,
+        },
       )
     }
   }

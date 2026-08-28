@@ -7,6 +7,7 @@ import { FLAG_CATALOG, isFlagKey, isOptionalFlagKey, type FlagKey } from "./cata
 import { cacheEpoch, getCachedDbEnabled, setCachedDbEnabled } from "./cache"
 import { hasRequiredEnv, isFeatureHardOff, type EnvMap } from "./env"
 import { resolveEnabled } from "./resolve-pure"
+import { hasStoredSiteGateHash } from "./site-gate-password"
 import { optionalDbOverlay, resolvedFlagEnabled } from "./status"
 
 export { resolveEnabled } from "./resolve-pure"
@@ -87,7 +88,10 @@ export async function isEnabled(key: string, options: IsEnabledOptions = {}): Pr
           dbEnabled = afterInvalidate
         }
       } else {
-        setCachedDbEnabled(key, dbEnabled, { epoch: readEpoch })
+        setCachedDbEnabled(key, dbEnabled, {
+          epoch: readEpoch,
+          siteGateHashPresent: key === "site_gate" ? hasStoredSiteGateHash(config) : undefined,
+        })
       }
     }
   } else {

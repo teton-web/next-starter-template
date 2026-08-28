@@ -12,7 +12,7 @@ A production-ready Next.js starter with authentication, Neon/Drizzle, Doppler-or
 - **Resend** + React Email templates
 - **Tailwind CSS 4** + **shadcn/ui**
 - **TypeScript** (build fails on type errors)
-- Preview/production **site gate**
+- Preview/production **site gate** (flag + hashed password on `/admin/features`; local `dev` ungated)
 - CMS (pages/articles, draft → publish) and **media library**
 - Contact form, privacy/terms, `llms.txt`, OG image
 - Session-gated uploads with MIME/signature checks
@@ -110,6 +110,12 @@ bun run db:seed
 ## Deployment
 
 Import the repo in Vercel, sync Doppler configs to Preview/Production, run `db:migrate` against those databases, then deploy. Do not set `RESEND_API_KEY` in CI stubs — that enables the email provider at build time.
+
+## Site gate (clones)
+
+The gate is **off** by default. Preview/production turn it on only when the `site_gate` flag is on **and** a password is stored (scrypt `passwordHash` on `/admin/features`). HMAC cookies use `AUTH_SECRET` or `SITE_GATE_SIGNING_SECRET`, not the typed password. `/api/health` stays public.
+
+Existing clones (**Bill Lax**, **MKFF**, **gateway-match**, **inventRight**) that still have Doppler `SITE_GATE_PASSWORD` must not go public on pull: leftover env is used **only** while the flag row has no hash. One-time: enable Site gate, set a password in `/admin/features`, then remove `SITE_GATE_PASSWORD` from Doppler. After that, preview/prod gating for anonymous visitors comes from `GET /api/site-gate/public-state`, not leftover env and not an admin cookie.
 
 ## License
 

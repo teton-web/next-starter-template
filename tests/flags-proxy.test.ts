@@ -7,6 +7,7 @@ import {
   encodeFeatureFlagCacheCookie,
   encodeWarmFlagCacheCookie,
   getCachedDbEnabled,
+  getCachedSiteGateHashPresent,
   getWarmFlagCacheSnapshot,
   invalidateFeatureFlagCache,
   resetFeatureFlagCache,
@@ -74,7 +75,9 @@ describe("proxy source graph", () => {
   test("proxy.ts uses proxy-resolve and does not import db or Node isEnabled", () => {
     const proxy = read("proxy.ts")
     expect(proxy).toContain('from "@/lib/flags/proxy-resolve"')
+    expect(proxy).toContain('from "@/lib/flags/site-gate-enforce"')
     expect(proxy).toContain("resolveProxyFlags")
+    expect(proxy).toContain("resolveSiteGateEnforce")
     expect(proxy).toContain("FEATURE_FLAG_CACHE_COOKIE")
     expect(proxy).not.toContain("platformUp")
     expect(proxy).not.toContain('from "@/lib/flags/resolve"')
@@ -191,6 +194,36 @@ describe("signed flag-cache cookie", () => {
     expect(await decodeFeatureFlagCacheCookie(cookie ?? undefined, { env: { AUTH_SECRET: "other-secret-minimum-32-chars!!" } })).toBeNull()
     expect(await decodeFeatureFlagCacheCookie(cookie ?? undefined, { env: { AUTH_SECRET: "" } })).toBeNull()
     expect(await encodeFeatureFlagCacheCookie({ waitlist: true }, { env: { AUTH_SECRET: "" } })).toBeNull()
+  })
+
+  test("cookie and memory overlay carry site-gate hash presence without the hash bytes", async () => {
+    const cookie = await encodeFeatureFlagCacheCookie(
+      { site_gate: true },
+      { env, siteGateHashPresent: true },
+    )
+    const decoded = await decodeFeatureFlagCacheCookie(cookie ?? undefined, { env })
+    expect(decoded?.overrides.site_gate).toBe(true)
+    expect(decoded?.siteGateHashPresent).toBe(true)
+    expect(JSON.stringify(decoded)).not.toContain("scrypt")
+    expect(JSON.stringify(decoded)).not.toContain("passwordHash")
+
+    const flags = await resolveProxyFlags(cookie ?? undefined, { env })
+    expect(flags.isEnabled("site_gate")).toBe(true)
+    expect(flags.siteGateHashPresent).toBe(true)
+    expect(getCachedSiteGateHashPresent()).toBe(true)
+
+    const off = await encodeFeatureFlagCacheCookie(
+      { site_gate: false },
+      { env, siteGateHashPresent: true },
+    )
+    resetFeatureFlagCache()
+    const offFlags = await resolveProxyFlags(off ?? undefined, { env })
+    expect(offFlags.isEnabled("site_gate")).toBe(false)
+    expect(offFlags.siteGateHashPresent).toBe(true)
+
+    setCachedDbEnabled("site_gate", true, { siteGateHashPresent: false })
+    expect(getCachedSiteGateHashPresent()).toBe(false)
+    expect(getWarmFlagCacheSnapshot()?.siteGateHashPresent).toBe(false)
   })
 
   test("cookie issued before invalidate is ignored", async () => {

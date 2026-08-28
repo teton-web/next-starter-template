@@ -66,6 +66,9 @@ describe("env contract", () => {
     expect(example).toContain("FEATURE_<KEY>")
     const uncommented = example.split("\n").filter((line) => /^FEATURE_/.test(line.trim()))
     expect(uncommented).toEqual([])
+    expect(example).toContain("# SITE_GATE_SIGNING_SECRET=")
+    expect(example).toContain("# SITE_GATE_PASSWORD=")
+    expect(example.split("\n").some((line) => /^SITE_GATE_PASSWORD=/.test(line))).toBe(false)
     const contract = verifyEnvContract({
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci",
       AUTH_SECRET: "ci-placeholder-secret-minimum-32-characters",

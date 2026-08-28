@@ -150,3 +150,11 @@ export function optionalOverlaysFromRows(
   }
   return overrides
 }
+
+export function siteGateHashPresentFromRows(rows: FlagRowInput[]): boolean {
+  for (const row of rows) {
+    if (row.key !== "site_gate") continue
+    return hasStoredSiteGateHash(row.config)
+  }
+  return false
+}
