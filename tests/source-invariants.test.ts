@@ -244,6 +244,22 @@ describe("source invariants", () => {
     expect(read("app/api/contact/route.ts")).not.toContain("lib/api/rate-limit")
   })
 
+  test("AGENTS.md first-run marker matches package identity", () => {
+    const pkg = JSON.parse(read("package.json")) as { name?: string }
+    const agents = read("AGENTS.md")
+    const marker = "<!-- first-run: starter-onboard -->"
+    if (pkg.name === "next-starter-template") {
+      expect(agents).toContain(marker)
+      expect(agents).toContain("Prefill from the user’s message")
+      expect(agents).toContain("Overwrite **`AGENTS.md` in full**")
+      expect(agents).toContain("## Onboarded AGENTS.md")
+    } else {
+      expect(agents).not.toContain(marker)
+      expect(agents).toContain("## Linear")
+      expect(agents).toContain("## Secrets")
+    }
+  })
+
   test("admin users API exists, requires admin capability, and has no public register", () => {
     expect(existsSync(join(root, "app/api/admin/users/route.ts"))).toBe(true)
     expect(existsSync(join(root, "app/api/admin/users/[id]/route.ts"))).toBe(true)

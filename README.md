@@ -19,6 +19,8 @@ A production-ready Next.js starter with authentication, Neon/Drizzle, Doppler-or
 
 ## Getting started
 
+A clone that will become a **product** must run the first-run onboard in [`AGENTS.md`](AGENTS.md) (agent asks, then **rewrites** `AGENTS.md`, `VISION.md`, and `README.md`). Do not leave the `first-run: starter-onboard` marker in a product repo.
+
 ### Prerequisites
 
 - [Bun](https://bun.sh) (or Node.js 18+)
