@@ -16,6 +16,9 @@ import { sanitizeCapabilities } from "@/lib/auth/capabilities"
 import {
   GENERIC_INVITE_ERROR,
   inviteExistingDecision,
+  restoreCompensateCredentialAction,
+  restoreCompensateUserFields,
+  type RestoreInviteSnapshot,
   WELCOME_EMAIL_ERROR,
   WELCOME_TOKEN_TTL_MS,
 } from "@/lib/auth/admin-users-pure"
@@ -101,10 +104,18 @@ export async function POST(request: Request) {
 
     let userId: string
     let inviteDecision: "create" | "restore"
+    let restoreSnapshot: RestoreInviteSnapshot | null = null
     try {
       const committed = await db.transaction(async (tx) => {
         const existing = await tx
-          .select({ id: users.id, deletedAt: users.deletedAt })
+          .select({
+            id: users.id,
+            deletedAt: users.deletedAt,
+            name: users.name,
+            capabilities: users.capabilities,
+            emailVerified: users.emailVerified,
+            mustChangePassword: users.mustChangePassword,
+          })
           .from(users)
           .where(sql`lower(${users.email}) = ${email}`)
           .limit(1)
@@ -140,18 +151,21 @@ export async function POST(request: Request) {
         }
 
         const credential = await tx
-          .select({ id: accounts.id })
+          .select({ id: accounts.id, password: accounts.password })
           .from(accounts)
           .where(and(eq(accounts.userId, id), eq(accounts.providerId, "credential")))
           .limit(1)
-        if (credential[0]) {
+        const existingCredential = credential[0]
+        let credentialId: string | null = existingCredential?.id ?? null
+        if (existingCredential) {
           await tx
             .update(accounts)
             .set({ password: hashedPassword, updatedAt: now })
-            .where(eq(accounts.id, credential[0].id))
+            .where(eq(accounts.id, existingCredential.id))
         } else {
+          credentialId = crypto.randomUUID()
           await tx.insert(accounts).values({
-            id: crypto.randomUUID(),
+            id: credentialId,
             userId: id,
             issuer: "local:credential",
             accountId: id,
@@ -167,10 +181,24 @@ export async function POST(request: Request) {
           expiresAt: new Date(Date.now() + WELCOME_TOKEN_TTL_MS),
         })
 
-        return { id, decision }
+        const snapshot: RestoreInviteSnapshot | null =
+          decision === "restore"
+            ? {
+                name: existing[0]!.name,
+                capabilities: existing[0]!.capabilities,
+                emailVerified: existing[0]!.emailVerified,
+                mustChangePassword: existing[0]!.mustChangePassword,
+                credentialId,
+                priorPasswordHash: existingCredential ? existingCredential.password : null,
+                credentialWasInserted: !existingCredential,
+              }
+            : null
+
+        return { id, decision, restoreSnapshot: snapshot }
       })
       userId = committed.id
       inviteDecision = committed.decision
+      restoreSnapshot = committed.restoreSnapshot
     } catch (error) {
       if (error instanceof HttpError) throw error
       throw new HttpError(400, GENERIC_INVITE_ERROR)
@@ -185,10 +213,36 @@ export async function POST(request: Request) {
             .delete(verifications)
             .where(eq(verifications.identifier, `reset-password:${token}`))
           if (inviteDecision === "restore") {
-            await tx
-              .update(users)
-              .set({ deletedAt: new Date(), updatedAt: new Date() })
-              .where(eq(users.id, userId))
+            const snapshot = restoreSnapshot
+            const now = new Date()
+            if (snapshot) {
+              const fields = restoreCompensateUserFields(snapshot, now)
+              await tx
+                .update(users)
+                .set({
+                  name: fields.name,
+                  capabilities: fields.capabilities as string[] | null,
+                  emailVerified: fields.emailVerified,
+                  mustChangePassword: fields.mustChangePassword,
+                  deletedAt: fields.deletedAt,
+                  updatedAt: fields.updatedAt,
+                })
+                .where(eq(users.id, userId))
+              const action = restoreCompensateCredentialAction(snapshot)
+              if (action.type === "restore_hash") {
+                await tx
+                  .update(accounts)
+                  .set({ password: action.password, updatedAt: now })
+                  .where(eq(accounts.id, action.id))
+              } else if (action.type === "delete_inserted") {
+                await tx.delete(accounts).where(eq(accounts.id, action.id))
+              }
+            } else {
+              await tx
+                .update(users)
+                .set({ deletedAt: now, updatedAt: now })
+                .where(eq(users.id, userId))
+            }
           } else {
             await tx.delete(users).where(eq(users.id, userId))
           }

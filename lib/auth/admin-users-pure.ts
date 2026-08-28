@@ -37,6 +37,54 @@ export function inviteExistingDecision(
   return existing.deletedAt ? "restore" : "reject_live"
 }
 
+export type RestoreInviteSnapshot = {
+  name: string
+  capabilities: unknown
+  emailVerified: boolean
+  mustChangePassword: boolean
+  credentialId: string | null
+  priorPasswordHash: string | null
+  credentialWasInserted: boolean
+}
+
+export function restoreCompensateUserFields(
+  snapshot: RestoreInviteSnapshot,
+  now: Date,
+): {
+  name: string
+  capabilities: unknown
+  emailVerified: boolean
+  mustChangePassword: boolean
+  deletedAt: Date
+  updatedAt: Date
+} {
+  return {
+    name: snapshot.name,
+    capabilities: snapshot.capabilities,
+    emailVerified: snapshot.emailVerified,
+    mustChangePassword: snapshot.mustChangePassword,
+    deletedAt: now,
+    updatedAt: now,
+  }
+}
+
+export function restoreCompensateCredentialAction(
+  snapshot: RestoreInviteSnapshot,
+):
+  | { type: "restore_hash"; id: string; password: string | null }
+  | { type: "delete_inserted"; id: string }
+  | { type: "none" } {
+  if (!snapshot.credentialId) return { type: "none" }
+  if (snapshot.credentialWasInserted) {
+    return { type: "delete_inserted", id: snapshot.credentialId }
+  }
+  return {
+    type: "restore_hash",
+    id: snapshot.credentialId,
+    password: snapshot.priorPasswordHash,
+  }
+}
+
 export function isAdminUser(capabilities: unknown): boolean {
   return hasCapability(sanitizeCapabilities(capabilities), "admin")
 }
