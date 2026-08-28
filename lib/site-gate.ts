@@ -1,5 +1,9 @@
+import { isFeatureHardOff, type EnvMap } from "@/lib/flags/env"
+
 export const SITE_GATE_COOKIE = "site_gate"
 export const SITE_GATE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+export const SITE_GATE_PASSWORD_MAX_LENGTH = 1024
+export const SITE_GATE_PUBLIC_STATE_PATH = "/api/site-gate/public-state"
 
 const COOKIE_VERSION = "v1"
 
@@ -38,12 +42,47 @@ async function signValue(secret: string, expiresAt: number) {
   return base64UrlEncode(new Uint8Array(signature))
 }
 
-export function isSiteGateEnabled() {
-  return process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "production"
+/** Preview/production only. Local `dev` is never gated. */
+export function isSiteGateEnabled(env: EnvMap = process.env) {
+  return env.VERCEL_ENV === "preview" || env.VERCEL_ENV === "production"
 }
 
-export function siteGatePassword() {
-  return process.env.SITE_GATE_PASSWORD ?? ""
+/** HMAC key for the unlock cookie. Never the typed review password. */
+export function siteGateSigningSecret(env: EnvMap = process.env) {
+  const dedicated = env.SITE_GATE_SIGNING_SECRET?.trim() ?? ""
+  if (dedicated) return dedicated
+  return env.AUTH_SECRET?.trim() ?? ""
+}
+
+/**
+ * Leftover Doppler password for clones that have not stored a hash yet.
+ * Not the product toggle and not the cookie HMAC key.
+ */
+export function leftoverSiteGatePassword(env: EnvMap = process.env) {
+  return env.SITE_GATE_PASSWORD?.trim() ?? ""
+}
+
+export function siteGatePasswordsEqual(left: string, right: string) {
+  return constantTimeEqual(left.normalize("NFKC"), right.normalize("NFKC"))
+}
+
+/**
+ * Enforce the gate on preview/prod when `isEnabled('site_gate')` is on
+ * (hash already folded into that overlay), or when leftover
+ * `SITE_GATE_PASSWORD` is set and no stored hash is known (clone pull).
+ */
+export function shouldEnforceSiteGate(options: {
+  flagEnabled: boolean
+  hashPresent?: boolean
+  env?: EnvMap
+}): boolean {
+  const env = options.env ?? process.env
+  if (!isSiteGateEnabled(env)) return false
+  if (isFeatureHardOff("site_gate", env)) return false
+  if (options.flagEnabled) return true
+  if (!leftoverSiteGatePassword(env)) return false
+  if (options.hashPresent === true) return false
+  return true
 }
 
 export function safeSiteGateNext(value: string | null | undefined) {

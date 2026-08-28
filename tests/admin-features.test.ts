@@ -401,6 +401,7 @@ describe("GET/PATCH /api/admin/features", () => {
     const encoded = cookieValue(response)
     const decoded = await decodeFeatureFlagCacheCookie(encoded ?? undefined)
     expect(decoded?.overrides.site_gate).toBe(false)
+    expect(decoded?.siteGateHashPresent).toBe(false)
   })
 
   test("site_gate password is hashed at rest and enables the flag", async () => {
@@ -422,6 +423,9 @@ describe("GET/PATCH /api/admin/features", () => {
     expect(String(hash)).not.toContain(plaintext)
     expect(flagRow.config?.password).toBeUndefined()
     expect(await isEnabled("site_gate", { env: {} })).toBe(true)
+    const decoded = await decodeFeatureFlagCacheCookie(cookieValue(response) ?? undefined)
+    expect(decoded?.overrides.site_gate).toBe(true)
+    expect(decoded?.siteGateHashPresent).toBe(true)
     const auditRow = dbInsertValues.mock.calls[1]?.[0] as Record<string, unknown>
     const auditJson = JSON.stringify(auditRow)
     expect(auditJson).not.toContain(plaintext)

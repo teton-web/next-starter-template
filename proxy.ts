@@ -15,12 +15,13 @@ import {
   getWarmFlagCacheSnapshot,
   resolveProxyFlags,
 } from "@/lib/flags/proxy-resolve"
+import { resolveSiteGateEnforce } from "@/lib/flags/site-gate-enforce"
 import { isCronApiPath } from "@/lib/cron/require-cron-secret"
 import {
-  isSiteGateEnabled,
   safeSiteGateNext,
   SITE_GATE_COOKIE,
-  siteGatePassword,
+  SITE_GATE_PUBLIC_STATE_PATH,
+  siteGateSigningSecret,
   verifySiteGateCookie,
 } from "@/lib/site-gate"
 
@@ -40,7 +41,12 @@ function isStaticAsset(pathname: string) {
 }
 
 function isSiteGateExempt(pathname: string) {
-  return isStaticAsset(pathname) || pathname === "/api/health" || isCronApiPath(pathname)
+  return (
+    isStaticAsset(pathname) ||
+    pathname === "/api/health" ||
+    pathname === SITE_GATE_PUBLIC_STATE_PATH ||
+    isCronApiPath(pathname)
+  )
 }
 
 function isHtmlNavigation(request: NextRequest) {
@@ -54,6 +60,7 @@ async function withFlagCacheCookie(response: NextResponse) {
   const value = await encodeFeatureFlagCacheCookie(snapshot.overrides, {
     iat: snapshot.iat,
     exp: snapshot.exp,
+    siteGateHashPresent: snapshot.siteGateHashPresent,
   })
   if (!value) return response
   response.cookies.set(FEATURE_FLAG_CACHE_COOKIE, value, featureFlagCacheCookieAttrs(snapshot.exp))
@@ -63,13 +70,14 @@ async function withFlagCacheCookie(response: NextResponse) {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   // Cookie overlay only — catalog + Doppler + ff_overrides. Never Neon.
-  await resolveProxyFlags(request.cookies.get(FEATURE_FLAG_CACHE_COOKIE)?.value)
-  const password = siteGatePassword()
+  // Cold preview/prod fetches GET /api/site-gate/public-state (Node), not Drizzle.
+  const flags = await resolveProxyFlags(request.cookies.get(FEATURE_FLAG_CACHE_COOKIE)?.value)
+  const enforceGate = await resolveSiteGateEnforce(request, flags)
 
-  if (isSiteGateEnabled() && password && !isSiteGateExempt(pathname)) {
+  if (enforceGate && !isSiteGateExempt(pathname)) {
     const hasGateAccess = await verifySiteGateCookie(
       request.cookies.get(SITE_GATE_COOKIE)?.value,
-      password,
+      siteGateSigningSecret(),
     )
 
     if (isGateRoute(pathname)) {

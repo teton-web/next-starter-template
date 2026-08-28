@@ -2,6 +2,7 @@ import { FLAG_CATALOG, isFlagKey, isOptionalFlagKey } from "./catalog"
 import {
   decodeFeatureFlagCacheCookie,
   overlayDbEnabled,
+  overlaySiteGateHashPresent,
   setCachedOptionalOverrides,
   type OptionalFlagOverrides,
 } from "./cache"
@@ -15,8 +16,10 @@ export {
   encodeFeatureFlagCacheCookie,
   encodeWarmFlagCacheCookie,
   featureFlagCacheCookieAttrs,
+  getCachedSiteGateHashPresent,
   getWarmFlagCacheSnapshot,
   invalidateFeatureFlagCache,
+  overlaySiteGateHashPresent,
 } from "./cache"
 
 export type ProxyFlagOptions = {
@@ -64,12 +67,19 @@ export async function resolveProxyFlags(
       now: options.now,
       issuedAt: decoded.iat,
       expiresAt: decoded.exp,
+      siteGateHashPresent: decoded.siteGateHashPresent,
     })
   }
+  const siteGateHashPresent = overlaySiteGateHashPresent(
+    decoded?.siteGateHashPresent,
+    cookieIssuedAt,
+    options.now,
+  )
   return {
     overrides,
     cookieIssuedAt,
     cookieExpiresAt: decoded?.exp,
+    siteGateHashPresent,
     isEnabled(key: string) {
       return isEnabledForProxy(key, {
         env: options.env,

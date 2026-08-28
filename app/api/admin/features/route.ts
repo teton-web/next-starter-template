@@ -14,13 +14,14 @@ import { isFeatureHardOff } from "@/lib/flags/env"
 import { loadAdminFlagState } from "@/lib/flags/list"
 import { setFeatureFlag } from "@/lib/flags/mutate"
 import { hashSiteGatePassword } from "@/lib/flags/site-gate-password"
+import { SITE_GATE_PASSWORD_MAX_LENGTH } from "@/lib/site-gate"
 import { killSwitchReason } from "@/lib/flags/status"
 
 const patchSchema = z
   .object({
     key: z.string().min(1),
     enabled: z.boolean().optional(),
-    password: z.string().max(1024).optional(),
+    password: z.string().max(SITE_GATE_PASSWORD_MAX_LENGTH).optional(),
   })
   .refine((value) => value.enabled !== undefined || (value.password?.trim().length ?? 0) > 0, {
     message: "Provide enabled or password",
@@ -46,9 +47,13 @@ function mapMutateError(error: unknown): never {
   throw error
 }
 
-async function attachFlagOverrideCookie(response: NextResponse, overlays: OptionalFlagOverrides) {
+async function attachFlagOverrideCookie(
+  response: NextResponse,
+  overlays: OptionalFlagOverrides,
+  siteGateHashPresent: boolean,
+) {
   const now = Date.now()
-  const encoded = await encodeFeatureFlagCacheCookie(overlays, { now })
+  const encoded = await encodeFeatureFlagCacheCookie(overlays, { now, siteGateHashPresent })
   if (!encoded) return response
   response.cookies.set(
     FEATURE_FLAG_CACHE_COOKIE,
@@ -113,10 +118,10 @@ export async function PATCH(request: Request) {
       mapMutateError(error)
     }
 
-    const { flags, overlays } = await loadAdminFlagState()
+    const { flags, overlays, siteGateHashPresent } = await loadAdminFlagState()
     const flag = flags.find((item) => item.key === saved.key) ?? flags[0]
     const response = jsonOk({ flag, flags })
-    return attachFlagOverrideCookie(response, overlays)
+    return attachFlagOverrideCookie(response, overlays, siteGateHashPresent)
   } catch (error) {
     return errorResponse(error)
   }
