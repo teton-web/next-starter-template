@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { OPTIONAL_FLAG_KEYS } from "@/lib/flags/catalog"
 
 const root = join(import.meta.dir, "..")
 
@@ -103,9 +104,26 @@ describe("source invariants", () => {
     expect(seed).toContain("eq(locales.isDefault, true)")
     expect(seed).toContain('eq(locales.code, "en")')
     expect(seed).toContain("await seedDefaultLocale()")
+    expect(seed).toContain("await seedPlatformFeatureFlags()")
+    expect(seed).toContain("PLATFORM_FLAG_KEYS")
+    expect(seed).toContain("FLAG_CATALOG[key].defaultEnabled")
+    expect(seed).toContain("onConflictDoNothing")
+    expect(seed).toContain("featureFlags")
+    expect(seed).not.toContain("OPTIONAL_FLAG_KEYS")
     expect(seed).toContain('console.log("Default locale already present")')
     expect(seed).toContain('console.log("Default locale en already present")')
     expect(seed).toContain('console.log("Created default locale en")')
+  })
+
+  test("seed does not insert optional feature flag keys", () => {
+    const seed = read("scripts/seed-admin.ts")
+    for (const key of OPTIONAL_FLAG_KEYS) {
+      expect(seed).not.toContain(`"${key}"`)
+      expect(seed).not.toContain(`'${key}'`)
+    }
+    expect(seed).toContain("PLATFORM_FLAG_KEYS.map")
+    expect(seed).toContain(".insert(featureFlags)")
+    expect(seed).toContain("onConflictDoNothing")
   })
 
   test("public chrome lists Articles, Contact, Privacy, and Terms without Admin in primary nav", () => {

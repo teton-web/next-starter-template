@@ -188,6 +188,22 @@ describe("database migrations policy", () => {
     expect(auditLogs).not.toContain("organizations")
   })
 
+  test("feature_flags migration is committed without org_id", () => {
+    expect(existsSync(join(root, "drizzle/0006_feature_flags.sql"))).toBe(true)
+    const sql = read("drizzle/0006_feature_flags.sql")
+    expect(sql).toContain('CREATE TABLE "feature_flags"')
+    expect(sql).toContain('"key" text PRIMARY KEY NOT NULL')
+    expect(sql).toContain('"enabled" boolean NOT NULL')
+    expect(sql).toContain('"config" jsonb')
+    expect(sql).toContain('"updated_at" timestamp')
+    expect(sql).toContain('"updated_by_user_id" text')
+    expect(sql).not.toContain("org_id")
+    expect(sql).not.toContain("organizations")
+    expect(read("drizzle/meta/_journal.json")).toContain("0006_feature_flags")
+    const index = read("lib/db/schema/index.ts")
+    expect(index).toContain('from "./feature-flags"')
+  })
+
   test("migration policy doc exists", () => {
     expect(existsSync(join(root, "docs/DATABASE_MIGRATIONS.md"))).toBe(true)
     expect(read("docs/DATABASE_MIGRATIONS.md")).toMatch(/never use.*push|Do not use.*push/i)

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { verifyEnvContract } from "../scripts/verify-env-contract.mjs"
 
@@ -53,5 +54,23 @@ describe("env contract", () => {
     })
     expect(spawned.status).toBe(0)
     expect(spawned.stdout).toContain("Required application environment variables are present")
+  })
+
+  test("FEATURE_ kill switches are documented as comments and are not required", () => {
+    const example = readFileSync(join(root, ".env.example"), "utf8")
+    expect(example).toContain("# FEATURE_WAITLIST=0")
+    expect(example).toContain("# FEATURE_STRIPE=0")
+    expect(example).toContain("# FEATURE_GALLERIES=0")
+    expect(example).toContain("# FEATURE_AUTH=0")
+    expect(example).toContain("# FEATURE_CMS=0")
+    expect(example).toContain("FEATURE_<KEY>")
+    const uncommented = example.split("\n").filter((line) => /^FEATURE_/.test(line.trim()))
+    expect(uncommented).toEqual([])
+    const contract = verifyEnvContract({
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci",
+      AUTH_SECRET: "ci-placeholder-secret-minimum-32-characters",
+    })
+    expect(contract.missing).not.toContain("FEATURE_WAITLIST")
+    expect(contract.missingRecommended).not.toContain("FEATURE_WAITLIST")
   })
 })

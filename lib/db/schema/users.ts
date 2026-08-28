@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm"
 import { sessions } from "./sessions"
 import { accounts } from "./accounts"
 import { auditLogs } from "./audit-logs"
+import { featureFlags } from "./feature-flags"
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -23,6 +24,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   auditLogs: many(auditLogs),
+  featureFlags: many(featureFlags),
 }))
 
 export type User = typeof users.$inferSelect

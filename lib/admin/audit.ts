@@ -47,8 +47,10 @@ export function auditClientMeta(source?: RequestLike, fallback?: NetworkMeta): N
   }
 }
 
-export async function writeAuditLog(input: WriteAuditLogInput) {
-  await db.insert(auditLogs).values({
+type AuditInsertClient = Pick<typeof db, "insert">
+
+export async function writeAuditLog(input: WriteAuditLogInput, client: AuditInsertClient = db) {
+  await client.insert(auditLogs).values({
     id: crypto.randomUUID(),
     actorUserId: input.actorUserId ?? null,
     action: input.action,
