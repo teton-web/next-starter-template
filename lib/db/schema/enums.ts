@@ -1,11 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core"
 
-export const membershipRole = pgEnum("membership_role", [
-  "owner",
-  "admin",
-  "member",
-])
-
 export const auditAction = pgEnum("audit_action", [
   "create",
   "update",
@@ -13,13 +7,6 @@ export const auditAction = pgEnum("audit_action", [
   "login",
   "logout",
   "invite",
-])
-
-export const notificationChannel = pgEnum("notification_channel", [
-  "in_app",
-  "email",
-  "sms",
-  "webhook",
 ])
 
 export const mediaKind = pgEnum("media_kind", ["image", "video", "document"])

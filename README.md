@@ -82,7 +82,7 @@ Open [http://localhost:3000](http://localhost:3000). Sign in at `/login`.
 ├── lib/
 │   ├── auth.ts
 │   ├── api/                # json helpers, pagination, rate limit
-│   └── db/schema/          # core identity / org / files
+│   └── db/schema/          # Better Auth identity, CMS, media
 ├── drizzle/                # versioned SQL migrations
 └── scripts/                # env verify, seed admin
 ```
