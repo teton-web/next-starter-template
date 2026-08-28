@@ -22,7 +22,7 @@ import {
   WELCOME_EMAIL_ERROR,
   WELCOME_TOKEN_TTL_MS,
 } from "@/lib/auth/admin-users-pure"
-import { sendWelcomeEmail } from "@/lib/auth"
+import { isResendConfigured, sendWelcomeEmail } from "@/lib/auth"
 import { setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
 import { deleteResetPasswordVerificationsForUser } from "@/lib/auth/reset-password-verifications"
 import {
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
     }
 
     let emailSent = false
-    if (process.env.RESEND_API_KEY) {
+    if (isResendConfigured()) {
       try {
         await sendWelcomeEmail({ user: { email, name: parsed.name }, url })
         emailSent = true

@@ -75,7 +75,7 @@ export async function sendWelcomeEmail({
   user: { email: string; name?: string | null }
   url: string
 }) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!isResendConfigured()) {
     return
   }
 

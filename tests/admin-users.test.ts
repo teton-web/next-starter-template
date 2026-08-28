@@ -265,6 +265,7 @@ describe("invite copy and public register", () => {
     expect(route).toContain("201")
     expect(route).toContain("emailSent")
     expect(route).toContain("setPasswordUrl")
+    expect(route).toContain("isResendConfigured")
     const page = readFileSync(join(root, "app/admin/users/page.tsx"), "utf8")
     expect(page).toContain("setPasswordUrl")
     expect(page).toContain('role="status"')
@@ -283,6 +284,9 @@ const checkCapability = mock(async () => false)
 const sendWelcomeEmail = mock(
   async (_input: { user: { email: string; name?: string | null }; url: string }) => undefined,
 )
+function isResendConfigured() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+}
 const writeAuditLog = mock(async () => undefined)
 const auditClientMeta = mock(() => ({}))
 
@@ -385,6 +389,7 @@ function sqlMentions(value: unknown, needle: string): boolean {
 mock.module("@/lib/auth", () => ({
   getSession,
   sendWelcomeEmail,
+  isResendConfigured,
 }))
 mock.module("@/lib/auth/capabilities", () => ({
   checkCapability,
@@ -421,12 +426,14 @@ function inviteRequest() {
 describe("POST /api/admin/users", () => {
   const envKeys = [
     "RESEND_API_KEY",
+    "EMAIL_FROM",
     "AUTH_URL",
     "NEXT_PUBLIC_BASE_URL",
     "NEXT_PUBLIC_SITE_URL",
   ] as const
   const priorEnv: Record<(typeof envKeys)[number], string | undefined> = {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     AUTH_URL: process.env.AUTH_URL,
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
@@ -449,6 +456,7 @@ describe("POST /api/admin/users", () => {
     transactions = []
     resetMemoryRateLimits()
     delete process.env.RESEND_API_KEY
+    delete process.env.EMAIL_FROM
     delete process.env.NEXT_PUBLIC_BASE_URL
     delete process.env.NEXT_PUBLIC_SITE_URL
     process.env.AUTH_URL = "https://example.com"
@@ -483,6 +491,7 @@ describe("POST /api/admin/users", () => {
 
   test("201 with delivery omits setPasswordUrl after send succeeds", async () => {
     process.env.RESEND_API_KEY = "re_test_key"
+    process.env.EMAIL_FROM = "noreply@example.com"
     const response = await POST(inviteRequest())
     expect(response.status).toBe(201)
     const body = await response.json()
@@ -515,6 +524,19 @@ describe("POST /api/admin/users", () => {
 
   test("no Resend returns 201 with a copyable set-password URL", async () => {
     delete process.env.RESEND_API_KEY
+    delete process.env.EMAIL_FROM
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.emailSent).toBe(false)
+    expect(typeof body.setPasswordUrl).toBe("string")
+    expect(body.setPasswordUrl).toContain("https://example.com/reset-password?token=")
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("Resend key without EMAIL_FROM returns 201 with a copyable set-password URL", async () => {
+    process.env.RESEND_API_KEY = "re_test_key"
+    delete process.env.EMAIL_FROM
     const response = await POST(inviteRequest())
     expect(response.status).toBe(201)
     const body = await response.json()
@@ -526,6 +548,7 @@ describe("POST /api/admin/users", () => {
 
   test("missing origin is 500 even without Resend", async () => {
     delete process.env.RESEND_API_KEY
+    delete process.env.EMAIL_FROM
     delete process.env.AUTH_URL
     delete process.env.NEXT_PUBLIC_BASE_URL
     delete process.env.NEXT_PUBLIC_SITE_URL
@@ -537,6 +560,7 @@ describe("POST /api/admin/users", () => {
 
   test("Resend send failure rolls back and returns 500", async () => {
     process.env.RESEND_API_KEY = "re_test_key"
+    process.env.EMAIL_FROM = "noreply@example.com"
     sendWelcomeEmail.mockImplementation(async () => {
       throw new Error("resend down")
     })
