@@ -2,22 +2,17 @@ process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
 import { beforeEach, describe, expect, mock, test } from "bun:test"
-
-const values = mock(async (_row: unknown) => undefined)
-const insert = mock((_table: unknown) => ({ values }))
+import { dbInsert, dbInsertValues, mockedDb, resetSharedDbInsert } from "./helpers/mock-db"
 
 mock.module("@/lib/db", () => ({
-  db: { insert },
+  db: mockedDb,
 }))
 
 const { writeAuditLog, writeAuditLogSafe } = await import("@/lib/admin/audit")
 
 describe("writeAuditLogSafe", () => {
   beforeEach(() => {
-    values.mockReset()
-    insert.mockReset()
-    insert.mockImplementation((_table: unknown) => ({ values }))
-    values.mockImplementation(async () => undefined)
+    resetSharedDbInsert()
   })
 
   test("inserts login rows with actor and action", async () => {
@@ -29,9 +24,9 @@ describe("writeAuditLogSafe", () => {
       ipAddress: "203.0.113.9",
       userAgent: "AuditTest/1.0",
     })
-    expect(insert).toHaveBeenCalled()
-    expect(values).toHaveBeenCalled()
-    const row = values.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(dbInsert).toHaveBeenCalled()
+    expect(dbInsertValues).toHaveBeenCalled()
+    const row = dbInsertValues.mock.calls[0]?.[0] as Record<string, unknown>
     expect(row.actorUserId).toBe("user-1")
     expect(row.action).toBe("login")
     expect(row.entityType).toBe("user")
@@ -41,7 +36,7 @@ describe("writeAuditLogSafe", () => {
   })
 
   test("swallows insert failures so login can continue", async () => {
-    values.mockImplementation(async () => {
+    dbInsertValues.mockImplementation(async () => {
       throw new Error("audit_logs unavailable")
     })
     const error = mock(() => undefined)
@@ -63,7 +58,7 @@ describe("writeAuditLogSafe", () => {
   })
 
   test("writeAuditLog still surfaces insert failures to callers that await it", async () => {
-    values.mockImplementation(async () => {
+    dbInsertValues.mockImplementation(async () => {
       throw new Error("audit_logs unavailable")
     })
     await expect(

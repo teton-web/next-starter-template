@@ -1,9 +1,14 @@
 process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
-import { beforeEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { dbExecute, mockedDb, resetSharedDbExecute } from "./helpers/mock-db"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+
+mock.module("@/lib/db", () => ({
+  db: mockedDb,
+}))
 
 const root = join(import.meta.dir, "..")
 
@@ -11,18 +16,16 @@ function read(rel: string) {
   return readFileSync(join(root, rel), "utf8")
 }
 
-const execute = mock(async () => ({ rows: [{ "?column?": 1 }] }))
-
-mock.module("@/lib/db", () => ({
-  db: { execute },
-}))
-
 const { GET } = await import("@/app/api/health/route")
 
 describe("GET /api/health", () => {
   beforeEach(() => {
-    execute.mockReset()
-    execute.mockImplementation(async () => ({ rows: [{ "?column?": 1 }] }))
+    dbExecute.mockReset()
+    dbExecute.mockImplementation(async () => ({ rows: [{ "?column?": 1 }] }))
+  })
+
+  afterEach(() => {
+    resetSharedDbExecute()
   })
 
   test("proxy site-gate exempts /api/health like static assets", () => {
@@ -62,7 +65,7 @@ describe("GET /api/health", () => {
 
   test("GET returns 200 { ok: true } when the ping works", async () => {
     const response = await GET()
-    expect(execute).toHaveBeenCalled()
+    expect(dbExecute).toHaveBeenCalled()
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body).toEqual({ ok: true })
@@ -71,7 +74,7 @@ describe("GET /api/health", () => {
   })
 
   test("GET returns 503 { ok: false } without leaking errors", async () => {
-    execute.mockImplementationOnce(async () => {
+    dbExecute.mockImplementationOnce(async () => {
       throw new Error("postgresql://ci:secret@localhost:5432/ci DATABASE_URL AUTH_SECRET")
     })
     const response = await GET()
