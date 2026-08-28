@@ -6,7 +6,9 @@ Update this table whenever you add a Route Handler.
 | --- | --- | --- |
 | `GET/POST /api/auth/[...all]` | Public (Better Auth) | `toNextJsHandler` catch-all (`sign-in/email`, password reset, optional magic-link) |
 | `POST /api/admin/change-password` | Session required | Authenticated user only; bcrypt against credential account |
-| `POST /api/upload` | Session required | Local disk fallback under `public/uploads` |
+| `POST /api/upload` | Session required | Alias of `POST /api/admin/media`. Local disk fallback under `public/uploads` |
+| `GET/POST/PATCH/DELETE /api/admin/media` | Session + `admin` or `moderate` | List/upload/update/purge media assets. |
+| `POST /api/admin/media/:id/crop` | Session + `admin` or `moderate` | FormData `file` cropped through `validateUploadFile`. Images only. Unused assets are replaced in place; assets with `media_usages` rows save as a new asset. |
 | `POST /api/site-gate` | Public | Sets HMAC cookie when `SITE_GATE_PASSWORD` matches |
 | `GET /api/health` | Public (unauthenticated) | DB ping (`select 1`). `200 { ok: true }` when the ping succeeds; `503 { ok: false }` on error. Never includes secrets or connection strings in the JSON. Site-gate exempt in `proxy.ts` (same as static assets). |
 | `GET/POST /api/admin/users` | Session + `admin` capability | Invite-only. POST `{ email, name, capabilities }` → 201 `{ id, email, name, capabilities, emailSent, setPasswordUrl? }`. `mustChangePassword` true. Welcome email when Resend is configured (`emailSent: true`, no URL). When email is skipped, 201 includes `setPasswordUrl` and `/admin/users` shows a copyable link. Missing origin is 500. Generic error on duplicate email (no enumeration). Modest rate limit on POST. |
