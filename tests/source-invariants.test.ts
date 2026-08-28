@@ -188,6 +188,9 @@ describe("source invariants", () => {
     expect(seed).toContain("if (createdCredential)")
     const credentialGate = seed.match(/if \(createdCredential\) \{[\s\S]*?mustChangePassword: true[\s\S]*?\.where\(eq\(users\.id, existing\[0\]\.id\)\)/)
     expect(credentialGate?.[0]).toBeTruthy()
+    expect(seed).toContain('SEED_ADMIN_MUST_CHANGE_PASSWORD')
+    expect(seed).toContain('=== "false"')
+    expect(seed).toContain("mustChangePassword: false")
   })
 
   test("account page uses changePassword client and change-password clears the flag", () => {

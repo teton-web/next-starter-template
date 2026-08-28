@@ -115,6 +115,18 @@ async function main() {
     console.log(`Created admin user ${email}. Change the password after first login.`)
   }
 
+  // CI/e2e: skip TW-1635 first-login gate so the smoke spec can publish CMS.
+  if (process.env.SEED_ADMIN_MUST_CHANGE_PASSWORD?.trim().toLowerCase() === "false") {
+    await db
+      .update(users)
+      .set({
+        mustChangePassword: false,
+        updatedAt: new Date(),
+      })
+      .where(sql`lower(${users.email}) = ${email}`)
+    console.log("SEED_ADMIN_MUST_CHANGE_PASSWORD=false; first-login password change skipped.")
+  }
+
   await seedDefaultLocale()
 }
 
