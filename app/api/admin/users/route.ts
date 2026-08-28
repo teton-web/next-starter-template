@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SITE_URL ||
       ""
     const url = setPasswordPageUrl(origin, token)
-    if (process.env.RESEND_API_KEY && !url) {
+    if (!url) {
       throw new HttpError(500, WELCOME_EMAIL_ERROR)
     }
 
@@ -204,9 +204,11 @@ export async function POST(request: Request) {
       throw new HttpError(400, GENERIC_INVITE_ERROR)
     }
 
+    let emailSent = false
     if (process.env.RESEND_API_KEY) {
       try {
-        await sendWelcomeEmail({ user: { email, name: parsed.name }, url: url! })
+        await sendWelcomeEmail({ user: { email, name: parsed.name }, url })
+        emailSent = true
       } catch {
         await db.transaction(async (tx) => {
           await tx
@@ -259,7 +261,17 @@ export async function POST(request: Request) {
       ...auditClientMeta(request),
     })
 
-    return jsonOk({ id: userId, email, name: parsed.name, capabilities }, 201)
+    return jsonOk(
+      {
+        id: userId,
+        email,
+        name: parsed.name,
+        capabilities,
+        emailSent,
+        ...(emailSent ? {} : { setPasswordUrl: url }),
+      },
+      201,
+    )
   } catch (error) {
     return errorResponse(error)
   }

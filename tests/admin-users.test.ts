@@ -1,10 +1,10 @@
 process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
-import { describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { hasCapability } from "@/lib/auth/capabilities-pure"
+import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
 import {
   countActiveAdmins,
   GENERIC_INVITE_ERROR,
@@ -14,10 +14,12 @@ import {
   lastAdminCapabilityChangeBlocked,
   restoreCompensateCredentialAction,
   restoreCompensateUserFields,
+  WELCOME_EMAIL_ERROR,
   wouldRemoveLastAdmin,
 } from "@/lib/auth/admin-users-pure"
 import { forbiddenUnlessAllowed } from "@/lib/api/helpers"
 import { setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
+import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
 const root = join(import.meta.dir, "..")
 
@@ -225,6 +227,12 @@ describe("invite copy and public register", () => {
     expect(route).toContain("GENERIC_INVITE_ERROR")
     expect(route).toContain("jsonOk(")
     expect(route).toContain("201")
+    expect(route).toContain("emailSent")
+    expect(route).toContain("setPasswordUrl")
+    const page = readFileSync(join(root, "app/admin/users/page.tsx"), "utf8")
+    expect(page).toContain("setPasswordUrl")
+    expect(page).toContain('role="status"')
+    expect(page).toContain("Set-password link (email was not sent)")
   })
 
   test("no public /register route", () => {
@@ -233,3 +241,196 @@ describe("invite copy and public register", () => {
     expect(existsSync(join(root, "app/(public)/register"))).toBe(false)
   })
 })
+
+const getSession = mock(async (): Promise<{ user: { id: string } } | null> => null)
+const checkCapability = mock(async () => false)
+const sendWelcomeEmail = mock(
+  async (_input: { user: { email: string; name?: string | null }; url: string }) => undefined,
+)
+const writeAuditLog = mock(async () => undefined)
+const auditClientMeta = mock(() => ({}))
+
+let existingRows: Array<{ id: string; deletedAt: Date | null }> = []
+let credentialRows: Array<{ id: string; password: string | null }> = []
+
+function createTx() {
+  let selects = 0
+  const tx = {
+    select: mock(() => {
+      selects += 1
+      return tx
+    }),
+    from: mock(() => tx),
+    where: mock(() => tx),
+    limit: mock(async () => (selects <= 1 ? existingRows : credentialRows)),
+    insert: mock(() => tx),
+    values: mock(async () => undefined),
+    update: mock(() => tx),
+    set: mock(() => tx),
+    delete: mock(() => tx),
+  }
+  return tx
+}
+
+mock.module("@/lib/auth", () => ({
+  getSession,
+  sendWelcomeEmail,
+}))
+mock.module("@/lib/auth/capabilities", () => ({
+  checkCapability,
+  sanitizeCapabilities,
+}))
+mock.module("@/lib/admin/audit", () => ({
+  writeAuditLog,
+  auditClientMeta,
+}))
+mock.module("@/lib/db", () => ({
+  db: {
+    transaction: async (fn: (tx: ReturnType<typeof createTx>) => unknown) => fn(createTx()),
+    execute: async () => {
+      throw new Error("use memory rate limit")
+    },
+  },
+}))
+
+const { POST } = await import("@/app/api/admin/users/route")
+
+function inviteRequest() {
+  return new Request("http://localhost/api/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "invitee@example.com",
+      name: "Invitee",
+      capabilities: ["moderate"],
+    }),
+  })
+}
+
+describe("POST /api/admin/users", () => {
+  const envKeys = [
+    "RESEND_API_KEY",
+    "AUTH_URL",
+    "NEXT_PUBLIC_BASE_URL",
+    "NEXT_PUBLIC_SITE_URL",
+  ] as const
+  const priorEnv: Record<(typeof envKeys)[number], string | undefined> = {
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    AUTH_URL: process.env.AUTH_URL,
+    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  }
+
+  beforeEach(() => {
+    getSession.mockReset()
+    checkCapability.mockReset()
+    sendWelcomeEmail.mockReset()
+    writeAuditLog.mockReset()
+    auditClientMeta.mockReset()
+    getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
+    checkCapability.mockImplementation(async () => true)
+    sendWelcomeEmail.mockImplementation(async () => undefined)
+    writeAuditLog.mockImplementation(async () => undefined)
+    auditClientMeta.mockImplementation(() => ({}))
+    existingRows = []
+    credentialRows = []
+    resetMemoryRateLimits()
+    delete process.env.RESEND_API_KEY
+    delete process.env.NEXT_PUBLIC_BASE_URL
+    delete process.env.NEXT_PUBLIC_SITE_URL
+    process.env.AUTH_URL = "https://example.com"
+  })
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      const value = priorEnv[key]
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  })
+
+  test("returns 401 without a session", async () => {
+    getSession.mockImplementation(async () => null)
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: "Unauthorized" })
+    expect(checkCapability).not.toHaveBeenCalled()
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("returns 403 when the session lacks admin", async () => {
+    getSession.mockImplementation(async () => ({ user: { id: "mod-1" } }))
+    checkCapability.mockImplementation(async () => false)
+    const response = await POST(inviteRequest())
+    expect(checkCapability).toHaveBeenCalledWith("mod-1", "admin")
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: "Forbidden" })
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("201 with delivery omits setPasswordUrl after send succeeds", async () => {
+    process.env.RESEND_API_KEY = "re_test_key"
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.email).toBe("invitee@example.com")
+    expect(body.name).toBe("Invitee")
+    expect(body.capabilities).toEqual(["moderate"])
+    expect(body.emailSent).toBe(true)
+    expect(body.setPasswordUrl).toBeUndefined()
+    expect(typeof body.id).toBe("string")
+    expect(sendWelcomeEmail).toHaveBeenCalledTimes(1)
+    const sent = sendWelcomeEmail.mock.calls[0]?.[0] as {
+      user: { email: string }
+      url: string
+    }
+    expect(sent.user.email).toBe("invitee@example.com")
+    expect(sent.url).toContain("https://example.com/reset-password?token=")
+    expect(writeAuditLog).toHaveBeenCalled()
+  })
+
+  test("live duplicate email is a generic 400", async () => {
+    process.env.RESEND_API_KEY = "re_test_key"
+    existingRows = [{ id: "u1", deletedAt: null }]
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.error).toBe(GENERIC_INVITE_ERROR)
+    expect(String(body.error).toLowerCase()).not.toContain("already exists")
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("no Resend returns 201 with a copyable set-password URL", async () => {
+    delete process.env.RESEND_API_KEY
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.emailSent).toBe(false)
+    expect(typeof body.setPasswordUrl).toBe("string")
+    expect(body.setPasswordUrl).toContain("https://example.com/reset-password?token=")
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("missing origin is 500 even without Resend", async () => {
+    delete process.env.RESEND_API_KEY
+    delete process.env.AUTH_URL
+    delete process.env.NEXT_PUBLIC_BASE_URL
+    delete process.env.NEXT_PUBLIC_SITE_URL
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: WELCOME_EMAIL_ERROR })
+    expect(sendWelcomeEmail).not.toHaveBeenCalled()
+  })
+
+  test("Resend send failure rolls back and returns 500", async () => {
+    process.env.RESEND_API_KEY = "re_test_key"
+    sendWelcomeEmail.mockImplementation(async () => {
+      throw new Error("resend down")
+    })
+    const response = await POST(inviteRequest())
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: WELCOME_EMAIL_ERROR })
+    expect(sendWelcomeEmail).toHaveBeenCalledTimes(1)
+  })
+})
+
