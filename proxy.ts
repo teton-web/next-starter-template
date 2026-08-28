@@ -15,6 +15,7 @@ import {
   getWarmFlagCacheSnapshot,
   resolveProxyFlags,
 } from "@/lib/flags/proxy-resolve"
+import { isCronApiPath } from "@/lib/cron/require-cron-secret"
 import {
   isSiteGateEnabled,
   safeSiteGateNext,
@@ -39,7 +40,7 @@ function isStaticAsset(pathname: string) {
 }
 
 function isSiteGateExempt(pathname: string) {
-  return isStaticAsset(pathname) || pathname === "/api/health"
+  return isStaticAsset(pathname) || pathname === "/api/health" || isCronApiPath(pathname)
 }
 
 function isHtmlNavigation(request: NextRequest) {

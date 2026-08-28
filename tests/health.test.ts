@@ -33,6 +33,7 @@ describe("GET /api/health", () => {
     const exempt = proxy.match(/function isSiteGateExempt\(pathname: string\) \{[\s\S]*?\n\}/)
     expect(exempt?.[0]).toContain("isStaticAsset(pathname)")
     expect(exempt?.[0]).toContain('pathname === "/api/health"')
+    expect(exempt?.[0]).toContain("isCronApiPath(pathname)")
     expect(proxy).toContain("isSiteGateEnabled() && password && !isSiteGateExempt(pathname)")
     expect(proxy).not.toContain("isSiteGateEnabled() && password && !isStaticAsset(pathname)")
     expect(proxy).toContain("function isHtmlNavigation")
