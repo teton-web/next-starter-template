@@ -13,6 +13,7 @@ import {
   renderResetPasswordEmail,
   renderSignInEmail,
   renderVerifyEmail,
+  renderWelcomeEmail,
 } from "@/emails/render"
 
 function getResend() {
@@ -64,6 +65,29 @@ async function findUserByEmail(email: string) {
     .limit(1)
 
   return rows[0] ?? null
+}
+
+export async function sendWelcomeEmail({
+  user,
+  url,
+}: {
+  user: { email: string; name?: string | null }
+  url: string
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    return
+  }
+
+  const resend = getResend()
+  const { error } = await resend.emails.send({
+    from: emailFrom(),
+    to: user.email,
+    subject: "Set up your account",
+    html: await renderWelcomeEmail({ url, name: user.name }),
+  })
+  if (error) {
+    throw new Error(error.message || "Failed to send welcome email")
+  }
 }
 
 async function sendResetPasswordEmail({

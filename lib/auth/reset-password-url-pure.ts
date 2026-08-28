@@ -1,3 +1,13 @@
+export function setPasswordPageUrl(origin: string, token: string): string | null {
+  if (!origin || !token) return null
+  try {
+    const base = new URL(origin).origin
+    return `${base}/reset-password?token=${encodeURIComponent(token)}`
+  } catch {
+    return null
+  }
+}
+
 export function publicResetPasswordUrl(authCallbackUrl: string, token?: string) {
   try {
     const parsed = new URL(authCallbackUrl)

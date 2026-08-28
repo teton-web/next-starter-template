@@ -3,7 +3,7 @@ process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
-import { parseJson } from "@/lib/api/helpers"
+import { forbiddenUnlessAllowed, parseJson, passwordChangeRequiredResponse } from "@/lib/api/helpers"
 import { parsePagination } from "@/lib/api/pagination"
 import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
 import {
@@ -13,13 +13,12 @@ import {
   shouldRejectApiForMustChangePassword,
 } from "@/lib/auth/must-change-password-pure"
 import { resetPasswordTokenFromCtx } from "@/lib/auth/reset-password-token-pure"
-import { publicResetPasswordUrl } from "@/lib/auth/reset-password-url-pure"
+import { publicResetPasswordUrl, setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
 import {
   passwordChangeRedirectUrl,
   postPasswordChangeUrl,
   safeCallbackUrl,
 } from "@/lib/auth/callback-url-pure"
-import { passwordChangeRequiredResponse } from "@/lib/api/helpers"
 
 describe("parseJson", () => {
   test("returns 422 on invalid bodies", async () => {
@@ -129,6 +128,28 @@ describe("safeCallbackUrl", () => {
     expect(postPasswordChangeUrl("/admin/account")).toBe("/admin")
     expect(postPasswordChangeUrl(null)).toBe("/admin")
     expect(postPasswordChangeUrl("/\\evil.example/path")).toBe("/admin")
+  })
+})
+
+describe("forbiddenUnlessAllowed", () => {
+  test("returns 403 Forbidden when not allowed", async () => {
+    const denied = forbiddenUnlessAllowed(false)
+    expect(denied).toBeInstanceOf(Response)
+    const response = denied as Response
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: "Forbidden" })
+  })
+
+  test("returns true when allowed", () => {
+    expect(forbiddenUnlessAllowed(true)).toBe(true)
+  })
+})
+
+describe("setPasswordPageUrl", () => {
+  test("uses origin and token query", () => {
+    expect(setPasswordPageUrl("https://app.example.com/", "t1")).toBe(
+      "https://app.example.com/reset-password?token=t1",
+    )
   })
 })
 

@@ -16,14 +16,16 @@ export async function requireUserId(): Promise<string | NextResponse> {
   return userId
 }
 
+export function forbiddenUnlessAllowed(allowed: boolean): true | NextResponse {
+  if (!allowed) return jsonError("Forbidden", 403)
+  return true
+}
+
 export async function requireCapabilityResponse(
   userId: string,
   capability: Capability,
 ): Promise<true | NextResponse> {
-  if (!(await checkCapability(userId, capability))) {
-    return jsonError("Forbidden", 403)
-  }
-  return true
+  return forbiddenUnlessAllowed(await checkCapability(userId, capability))
 }
 
 export function jsonOk<T>(data: T, status = 200) {
