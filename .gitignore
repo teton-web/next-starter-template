@@ -34,3 +34,9 @@ next-env.d.ts
 # local upload fallback
 /public/uploads
 
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+

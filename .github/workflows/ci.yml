@@ -58,3 +58,58 @@ jobs:
 
       - name: Lint
         run: bun run lint
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Stub values for CI — no GitHub secrets or Doppler required.
+      # Do not set RESEND_API_KEY / EMAIL_FROM here: that enables the magic-link
+      # plugin and password-reset mailer, which need a real mail server.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      AUTH_SECRET: ci-placeholder-secret-minimum-32-characters
+      AUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_NAME: Next Starter CI
+      SEED_ADMIN_EMAIL: admin@example.com
+      SEED_ADMIN_PASSWORD: changeme-admin-password
+      SEED_ADMIN_MUST_CHANGE_PASSWORD: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Migrate
+        run: bunx drizzle-kit migrate
+
+      - name: Seed admin
+        run: bun scripts/seed-admin.ts
+
+      - name: Build
+        run: bun run build
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: E2E
+        run: bun run e2e

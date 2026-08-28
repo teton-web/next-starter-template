@@ -12,7 +12,7 @@ const eslintConfig = [
     },
   },
   {
-    ignores: [".next/**", "node_modules/**", "drizzle/**"],
+    ignores: [".next/**", "node_modules/**", "drizzle/**", "e2e/**", "playwright-report/**", "test-results/**"],
   },
 ]
 
