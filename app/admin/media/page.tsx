@@ -4,16 +4,12 @@ import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
+import { MediaCropDialog, type MediaCropAsset } from "@/components/admin/media-crop-dialog"
 
-type Asset = {
-  id: string
-  filename: string
-  storageUrl: string
+type Asset = MediaCropAsset & {
   thumbnailUrl: string | null
-  kind: string
   altText: string | null
   archivedAt: string | null
-  usageCount: number
   canPurge: boolean
 }
 
@@ -22,6 +18,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 export default function AdminMediaPage() {
   const [q, setQ] = useState("")
   const [message, setMessage] = useState("")
+  const [cropAsset, setCropAsset] = useState<Asset | null>(null)
   const { data, mutate } = useSWR(`/api/admin/media?q=${encodeURIComponent(q)}`, fetcher)
   const assets: Asset[] = data?.assets ?? []
 
@@ -74,7 +71,12 @@ export default function AdminMediaPage() {
             <p className="text-xs text-muted-foreground">
               {asset.kind} · {asset.usageCount} uses {asset.archivedAt ? "· archived" : ""}
             </p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
+              {asset.kind === "image" ? (
+                <Button size="sm" variant="outline" onClick={() => setCropAsset(asset)}>
+                  Crop
+                </Button>
+              ) : null}
               <Button size="sm" variant="outline" onClick={() => void archive(asset.id, !asset.archivedAt)}>
                 {asset.archivedAt ? "Restore" : "Archive"}
               </Button>
@@ -87,6 +89,14 @@ export default function AdminMediaPage() {
           </li>
         ))}
       </ul>
+      <MediaCropDialog
+        asset={cropAsset}
+        open={cropAsset !== null}
+        onOpenChange={(open) => {
+          if (!open) setCropAsset(null)
+        }}
+        onSaved={() => mutate()}
+      />
     </div>
   )
 }

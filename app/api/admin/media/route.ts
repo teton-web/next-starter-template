@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server"
 import { and, desc, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm"
 import { z } from "zod"
-import sharp from "sharp"
 import { db } from "@/lib/db"
 import { mediaAssets, mediaUsages } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
 import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { getStorageDriver, storageNotConfiguredMessage } from "@/lib/storage"
+import { persistMediaObject } from "@/lib/media/persist"
 import { mediaObjectKey, validateUploadFile } from "@/lib/media/validate-upload"
 import { mediaLifecycle } from "@/lib/media/lifecycle"
 import { trackEvent } from "@/lib/analytics"
@@ -112,41 +112,27 @@ export async function POST(request: NextRequest) {
     const id = crypto.randomUUID()
     const key = mediaObjectKey(validated.value.kind, id, validated.value.safeFilename)
     const bytes = Buffer.from(await (file as File).arrayBuffer())
-    const stored = await driver.put(key, bytes, validated.value.contentType)
-
-    let width: number | null = null
-    let height: number | null = null
-    let thumbnailUrl: string | null = stored.url
-    let thumbnailKey: string | null = key
-
-    if (validated.value.kind === "image") {
-      try {
-        const meta = await sharp(bytes).metadata()
-        width = meta.width ?? null
-        height = meta.height ?? null
-        const thumb = await sharp(bytes).resize(400, 400, { fit: "inside" }).jpeg({ quality: 75 }).toBuffer()
-        const thumbKey = key.replace(/\.[^.]+$/, "-thumb.jpg")
-        const thumbStored = await driver.put(thumbKey, thumb, "image/jpeg")
-        thumbnailKey = thumbStored.key
-        thumbnailUrl = thumbStored.url
-      } catch {
-        // keep original as thumbnail
-      }
-    }
+    const persisted = await persistMediaObject(
+      driver,
+      key,
+      bytes,
+      validated.value.contentType,
+      validated.value.kind,
+    )
 
     const altText = String(form.get("altText") ?? "") || null
 
     await db.insert(mediaAssets).values({
       id,
-      storageUrl: stored.url,
-      storageKey: stored.key,
-      thumbnailUrl,
-      thumbnailKey,
+      storageUrl: persisted.stored.url,
+      storageKey: persisted.stored.key,
+      thumbnailUrl: persisted.thumbnailUrl,
+      thumbnailKey: persisted.thumbnailKey,
       filename: validated.value.safeFilename,
       contentType: validated.value.contentType,
       sizeBytes: validated.value.sizeBytes,
-      width,
-      height,
+      width: persisted.width,
+      height: persisted.height,
       kind: validated.value.kind,
       altText,
       uploadedByUserId: userId,
@@ -161,7 +147,7 @@ export async function POST(request: NextRequest) {
     })
 
     trackEvent("media_upload", { kind: validated.value.kind })
-    return jsonOk({ id, url: stored.url, kind: validated.value.kind })
+    return jsonOk({ id, url: persisted.stored.url, kind: validated.value.kind })
   } catch (error) {
     return errorResponse(error)
   }

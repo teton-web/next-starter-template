@@ -142,6 +142,8 @@ describe("analytics allow-list", () => {
       "app/api/admin/cms/route.ts",
       "app/api/admin/cms/[id]/route.ts",
       "app/api/admin/media/route.ts",
+      "app/api/admin/media/[id]/crop/route.ts",
+      "lib/media/crop.ts",
       "app/api/upload/route.ts",
     ]
     for (const file of files) {
