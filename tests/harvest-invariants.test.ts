@@ -77,6 +77,77 @@ describe("analytics allow-list", () => {
       destination: "/x",
     })
   })
+
+  test("strips PII keys including name, IP, and body", () => {
+    expect(
+      sanitizeAnalyticsProps({
+        entry_type: "article",
+        kind: "image",
+        email: "a@b.c",
+        name: "Ada",
+        ipAddress: "203.0.113.9",
+        body: "<p>secret</p>",
+        message: "hello there",
+      }),
+    ).toEqual({ entry_type: "article", kind: "image" })
+  })
+
+  test("trackEvent is wired at contact, CMS publish, and media upload", () => {
+    const analytics = read("lib/analytics.ts")
+    expect(analytics).toContain('from "@vercel/analytics/server"')
+    expect(analytics).toContain("export const ANALYTICS_EVENTS")
+    expect(analytics).toContain("contact_submit")
+    expect(analytics).toContain("contact_submit_failed")
+    expect(analytics).toContain("cms_publish")
+    expect(analytics).toContain("media_upload")
+    expect(analytics).toContain("sanitizeAnalyticsProps")
+
+    const pii = /\b(email|name|ipAddress|ip|message|body|filename)\b/
+
+    const contact = read("app/api/contact/route.ts")
+    expect(contact).toContain('from "@/lib/analytics"')
+    expect(contact).toContain('trackEvent("contact_submit")')
+    expect(contact).toContain('trackEvent("contact_submit_failed"')
+    const contactCalls = contact.match(/trackEvent\([^)]*\)/g) ?? []
+    expect(contactCalls.length).toBeGreaterThanOrEqual(3)
+    for (const call of contactCalls) expect(call).not.toMatch(pii)
+
+    const cmsPatch = read("app/api/admin/cms/[id]/route.ts")
+    expect(cmsPatch).toContain('from "@/lib/analytics"')
+    expect(cmsPatch).toContain('trackEvent("cms_publish", { entry_type: entry.entryType })')
+    expect(cmsPatch).toContain('status === "published" && entry.status !== "published"')
+    const cmsCalls = cmsPatch.match(/trackEvent\([^)]*\)/g) ?? []
+    expect(cmsCalls).toEqual(['trackEvent("cms_publish", { entry_type: entry.entryType })'])
+    for (const call of cmsCalls) expect(call).not.toMatch(pii)
+
+    const cmsCreate = read("app/api/admin/cms/route.ts")
+    expect(cmsCreate).toContain('status: "draft"')
+    expect(cmsCreate).not.toContain("trackEvent")
+
+    const media = read("app/api/admin/media/route.ts")
+    expect(media).toContain('from "@/lib/analytics"')
+    expect(media).toContain('trackEvent("media_upload", { kind: validated.value.kind })')
+    expect(media).toContain("db.insert(mediaAssets)")
+    expect(read("app/api/upload/route.ts")).toContain('from "@/app/api/admin/media/route"')
+    const mediaCalls = media.match(/trackEvent\([^)]*\)/g) ?? []
+    expect(mediaCalls).toEqual(['trackEvent("media_upload", { kind: validated.value.kind })'])
+    for (const call of mediaCalls) expect(call).not.toMatch(pii)
+
+    expect(read("lib/analytics.ts")).toContain("export function trackEvent")
+  })
+
+  test("event name allowlist is not duplicated outside lib/analytics.ts", () => {
+    const files = [
+      "app/api/contact/route.ts",
+      "app/api/admin/cms/route.ts",
+      "app/api/admin/cms/[id]/route.ts",
+      "app/api/admin/media/route.ts",
+      "app/api/upload/route.ts",
+    ]
+    for (const file of files) {
+      expect(read(file)).not.toContain("ANALYTICS_EVENTS")
+    }
+  })
 })
 
 describe("memory rate limit fallback", () => {

@@ -6,6 +6,7 @@ import { contactInquiries } from "@/lib/db/schema"
 import { parseJson, jsonOk } from "@/lib/api/helpers"
 import { checkRateLimit, clientKey } from "@/lib/services/rate-limit"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
+import { trackEvent } from "@/lib/analytics"
 
 const schema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -22,7 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     const parsed = await parseJson(request, schema)
-    if (parsed instanceof Response) return parsed
+    if (parsed instanceof Response) {
+      trackEvent("contact_submit_failed", { error_code: "validation", status: parsed.status })
+      return parsed
+    }
 
     await db.insert(contactInquiries).values({
       id: crypto.randomUUID(),
@@ -46,8 +50,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    trackEvent("contact_submit")
     return jsonOk({ success: true })
   } catch (error) {
+    const status = error instanceof HttpError ? error.status : 500
+    const error_code =
+      status === 429 ? "rate_limited" : status === 400 || status === 422 ? "validation" : "internal"
+    trackEvent("contact_submit_failed", { error_code, status })
     return errorResponse(error)
   }
 }

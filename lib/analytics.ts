@@ -1,4 +1,4 @@
-import { track } from "@vercel/analytics"
+import { track } from "@vercel/analytics/server"
 
 export const ANALYTICS_EVENTS = [
   "contact_submit",
@@ -31,5 +31,9 @@ export function sanitizeAnalyticsProps(props: Record<string, unknown> | undefine
 
 export function trackEvent(name: AnalyticsEvent, props?: Record<string, unknown>) {
   if (!(ANALYTICS_EVENTS as readonly string[]).includes(name)) return
-  track(name, sanitizeAnalyticsProps(props))
+  try {
+    void Promise.resolve(track(name, sanitizeAnalyticsProps(props))).catch(() => {})
+  } catch {
+    // fail-open: mutations must succeed even if analytics is down
+  }
 }

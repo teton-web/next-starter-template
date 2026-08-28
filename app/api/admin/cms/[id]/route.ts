@@ -10,6 +10,7 @@ import { sanitizeCmsHtml } from "@/lib/cms/sanitize"
 import { canHardDeleteCmsEntry } from "@/lib/cms/delete-pure"
 import { restoreCmsRevision } from "@/lib/cms/restore"
 import { revalidatePublic } from "@/lib/cache/public-cache"
+import { trackEvent } from "@/lib/analytics"
 
 const patchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -151,6 +152,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       entityId: id,
       ...auditClientMeta(request),
     })
+    if (status === "published" && entry.status !== "published") {
+      trackEvent("cms_publish", { entry_type: entry.entryType })
+    }
     return jsonOk({ success: true, status, routePath })
   } catch (error) {
     return errorResponse(error)

@@ -10,6 +10,7 @@ import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { getStorageDriver, storageNotConfiguredMessage } from "@/lib/storage"
 import { mediaObjectKey, validateUploadFile } from "@/lib/media/validate-upload"
 import { mediaLifecycle } from "@/lib/media/lifecycle"
+import { trackEvent } from "@/lib/analytics"
 
 const patchSchema = z.object({
   id: z.string().min(1),
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
       ...auditClientMeta(request),
     })
 
+    trackEvent("media_upload", { kind: validated.value.kind })
     return jsonOk({ id, url: stored.url, kind: validated.value.kind })
   } catch (error) {
     return errorResponse(error)
