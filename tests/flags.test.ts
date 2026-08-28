@@ -157,6 +157,24 @@ describe("isEnabled resolution", () => {
     expect(await isEnabled("waitlist", { env: {}, dbEnabled: false })).toBe(false)
   })
 
+  test("site_gate stays dark without a stored password hash", async () => {
+    expect(await isEnabled("site_gate", { env: {}, dbEnabled: true })).toBe(false)
+    expect(
+      await isEnabled("site_gate", {
+        env: {},
+        dbEnabled: true,
+        config: { passwordHash: "scrypt$n$r$p$salt$key" },
+      }),
+    ).toBe(true)
+
+    installFlagSelect([{ enabled: true, config: {} }])
+    expect(await isEnabled("site_gate", { env: {} })).toBe(false)
+
+    resetFeatureFlagCache()
+    installFlagSelect([{ enabled: true, config: { passwordHash: "scrypt$n$r$p$salt$key" } }])
+    expect(await isEnabled("site_gate", { env: {} })).toBe(true)
+  })
+
   test("dependsOn is metadata only: scheduled_publish DB-on does not require cron", async () => {
     expect(await isEnabled("scheduled_publish", { env: {}, dbEnabled: true })).toBe(true)
     expect(await isEnabled("cron", { env: {}, dbEnabled: true })).toBe(false)
@@ -527,5 +545,46 @@ describe("setFeatureFlag", () => {
       "Platform feature auth cannot be turned off",
     )
     expect(dbInsertValues).not.toHaveBeenCalled()
+  })
+
+  test("site_gate enabled without a hash stays off for the next isEnabled read", async () => {
+    const result = await setFeatureFlag({ key: "site_gate", enabled: true })
+    expect(result).toEqual({ key: "site_gate", enabled: true, config: {} })
+    expect(await isEnabled("site_gate", { env: {} })).toBe(false)
+  })
+
+  test("merges site_gate passwordHash into existing config", async () => {
+    selectRows = [{ enabled: false, config: { note: "kept" } }]
+    const result = await setFeatureFlag({
+      key: "site_gate",
+      enabled: true,
+      config: { passwordHash: "scrypt$n$r$p$salt$key" },
+    })
+    expect(result.config).toEqual({ note: "kept", passwordHash: "scrypt$n$r$p$salt$key" })
+    expect(await isEnabled("site_gate", { env: {} })).toBe(true)
+  })
+
+  test("audit metadata redacts passwordHash and plaintext", async () => {
+    selectRows = [{ enabled: true, config: { password: "plain-secret", passwordHash: "scrypt$old-hash", note: "kept" } }]
+    await setFeatureFlag({
+      key: "site_gate",
+      enabled: true,
+      config: { passwordHash: "scrypt$new-hash" },
+    })
+    const auditRow = dbInsertValues.mock.calls[1]?.[0] as Record<string, unknown>
+    expect(auditRow.metadata).toEqual({
+      key: "site_gate",
+      old: true,
+      new: true,
+      config: {
+        old: { note: "kept", hasPassword: true },
+        new: { note: "kept", hasPassword: true },
+      },
+    })
+    const serialized = JSON.stringify(auditRow)
+    expect(serialized).not.toContain("plain-secret")
+    expect(serialized).not.toContain("scrypt$old-hash")
+    expect(serialized).not.toContain("scrypt$new-hash")
+    expect(serialized).not.toContain("passwordHash")
   })
 })

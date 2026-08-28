@@ -8,8 +8,9 @@ Flags live in `lib/flags/`. Resolution is shared; **where** the DB overlay comes
 2. Platform keys (`auth`, `admin`, `cms`, `media`, `contact`, `seo`, `analytics`, `theme`) stay on unless killed in Doppler. Admin/DB cannot turn them off
 3. Optional keys: DB `enabled` when a row exists, otherwise the catalog default (off)
 4. Required env still keeps a flag dark (`stripe`, `oauth`, `cron`, galleries blob on Vercel)
+5. Node `isEnabled('site_gate')` also requires a stored password hash in `feature_flags.config` (`passwordHash`). Flag on + empty password stays dark. Proxy overlay does not read that hash (POR-383).
 
-`dependsOn` is catalog metadata only; it is not walked.
+`dependsOn` is catalog metadata only; it is not walked. Admins manage flags at `/admin/features` (session + `admin`). PATCH sets `ff_overrides` for the proxy overlay.
 
 ## Node vs proxy
 
@@ -28,7 +29,7 @@ Node memory is **isolate-local**. The proxy isolate does not share it. Cross-iso
 - `setFeatureFlag` invalidates **after** a successful commit, then seeds the written optional key. A generation/epoch drops in-flight `isEnabled` fills that started before invalidate (including rollback: no invalidate, so no refill from a failed tx).
 - Signed cookie `ff_overrides`: HMAC-SHA256 with Doppler `AUTH_SECRET` (not `SITE_GATE_PASSWORD`). Payload `exp` is `iat + TTL` (or remaining life when re-emitted). Re-signing never extends past the original `iat + TTL`.
 - `resolveProxyFlags` decodes a valid cookie and overlays it (`setCachedOptionalOverrides` fills only cold keys, preserving original `iat`/`exp`).
-- `encodeFeatureFlagCacheCookie` is the helper POR-381 should `Set-Cookie` after a flag save. Proxy re-emits remaining life when isolate memory is already warm (cookie or post-save seed); it does not mint a DB snapshot.
+- `encodeFeatureFlagCacheCookie` is the helper `/api/admin/features` uses after a flag save. The cookie is a **fresh** snapshot of **all** optional DB overlays (not only the mutated key), issued after `setFeatureFlag` invalidates so a stale overlay is not re-signed. Proxy re-emits remaining life when isolate memory is already warm (cookie or post-save seed); it does not mint a DB snapshot.
 - Same-isolate invalidation ignores cookies issued at or before the invalidation timestamp.
 
 ## Failure mode
