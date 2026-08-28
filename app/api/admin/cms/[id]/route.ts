@@ -1,13 +1,14 @@
 import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/lib/db"
-import { cmsEntries, cmsRevisions, mediaUsages } from "@/lib/db/schema"
+import { cmsEntries, cmsRevisions, mediaUsages, users } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
 import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { isReservedSlug, isValidSlug, routeForEntry } from "@/lib/cms/slugs"
 import { sanitizeCmsHtml } from "@/lib/cms/sanitize"
 import { canHardDeleteCmsEntry } from "@/lib/cms/delete-pure"
+import { restoreCmsRevision } from "@/lib/cms/restore"
 import { revalidatePublic } from "@/lib/cache/public-cache"
 
 const patchSchema = z.object({
@@ -36,8 +37,16 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const [entry] = await db.select().from(cmsEntries).where(eq(cmsEntries.id, id)).limit(1)
     if (!entry) throw new HttpError(404, "Entry not found")
     const revisions = await db
-      .select()
+      .select({
+        id: cmsRevisions.id,
+        revisionNumber: cmsRevisions.revisionNumber,
+        snapshot: cmsRevisions.snapshot,
+        createdAt: cmsRevisions.createdAt,
+        createdByUserId: cmsRevisions.createdByUserId,
+        actorEmail: users.email,
+      })
       .from(cmsRevisions)
+      .leftJoin(users, eq(cmsRevisions.createdByUserId, users.id))
       .where(eq(cmsRevisions.entryId, id))
       .orderBy(desc(cmsRevisions.revisionNumber))
     return jsonOk({ entry, revisions })
@@ -57,25 +66,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const parsed = patchSchema.parse(await request.json())
 
     if (parsed.restoreRevisionId) {
-      const [revision] = await db
-        .select()
-        .from(cmsRevisions)
-        .where(and(eq(cmsRevisions.id, parsed.restoreRevisionId), eq(cmsRevisions.entryId, id)))
-        .limit(1)
-      if (!revision) throw new HttpError(404, "Revision not found")
-      const snapshot = revision.snapshot as {
-        title?: string
-        slug?: string
-        body?: string
-        excerpt?: string | null
-        heroMediaId?: string | null
-      }
-      parsed.title = snapshot.title ?? entry.title
-      parsed.slug = snapshot.slug ?? entry.slug
-      parsed.body = snapshot.body ?? entry.body
-      parsed.excerpt = snapshot.excerpt ?? entry.excerpt
-      parsed.heroMediaId = snapshot.heroMediaId ?? entry.heroMediaId
-      parsed.status = "draft"
+      const result = await restoreCmsRevision({
+        entryId: id,
+        revisionId: parsed.restoreRevisionId,
+        userId,
+        request,
+      })
+      return jsonOk({ success: true, ...result })
     }
 
     const slug = parsed.slug && isValidSlug(parsed.slug) ? parsed.slug : entry.slug

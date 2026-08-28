@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { CmsRevisionList, type CmsRevisionListItem } from "@/components/admin/cms-revision-list"
 
 type Entry = {
   id: string
@@ -25,6 +26,7 @@ export default function EditCmsEntryPage() {
   const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
   const remote: Entry | null = data?.entry ?? null
+  const revisions: CmsRevisionListItem[] = data?.revisions ?? []
   const [draft, setDraft] = useState<Entry | null>(null)
   const [message, setMessage] = useState("")
   const entry = draft ?? remote
@@ -88,6 +90,15 @@ export default function EditCmsEntryPage() {
           <Button variant="destructive" onClick={() => void remove()}>Delete</Button>
         ) : null}
       </div>
+      <CmsRevisionList
+        entryId={entry.id}
+        revisions={revisions}
+        onRestored={async () => {
+          setDraft(null)
+          setMessage("Restored as draft")
+          await mutate()
+        }}
+      />
     </div>
   )
 }

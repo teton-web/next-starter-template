@@ -13,6 +13,9 @@ Update this table whenever you add a Route Handler.
 | `PATCH /api/admin/users/:id` | Session + `admin` capability | `{ capabilities }` (sanitized) or `{ deletedAt: true }`. Cannot strip/soft-delete the last remaining admin. |
 | `GET /api/admin/audit` | Session + `admin` capability | Paginated newest-first audit log (`limit`/`offset`). Read-only; no create/update/delete. |
 | `GET/PATCH /api/admin/features` | Session + `admin` capability | Catalog list with resolved state, kill-switch / missing-key / dependency reasons. PATCH `{ key, enabled?, password? }`. Platform cannot be turned off. `FEATURE_<KEY>=0` rejects `enabled: true` (409); password-only / config updates still persist. Site-gate password is scrypt-hashed into `config.passwordHash`; GET and audit metadata never return password or hash. PATCH `Set-Cookie: ff_overrides` is a snapshot of all optional DB overlays. |
+| `GET/POST /api/admin/cms` | Session + `moderate` (admin implies moderate) | List/create CMS entries. |
+| `GET/PATCH/DELETE /api/admin/cms/:id` | Session + `moderate` | Load entry + revisions; save/publish/unpublish; hard-delete drafts only. |
+| `POST /api/admin/cms/:id/restore` | Session + `moderate` | `{ revisionId }` copies title/slug/excerpt/body/hero into the working draft, forces `draft` (does not republish; `publishedAt` is live-at, not restored), writes a **new** revision, never deletes old ones. Audited as `update` with restore metadata. |
 
 Site gate (preview/production only) runs in `proxy.ts` before page auth. `GET /api/health` is exempt, like static assets. Cron/webhook bypasses should be added explicitly if you introduce those routes.
 
