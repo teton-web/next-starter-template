@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { cmsEntries, cmsRevisions, mediaUsages } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
-import { writeAuditLog } from "@/lib/admin/audit"
+import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { getDefaultLocaleId } from "@/lib/cms/queries"
 import { isReservedSlug, isValidSlug, routeForEntry, slugFromTitle } from "@/lib/cms/slugs"
 import { sanitizeCmsHtml } from "@/lib/cms/sanitize"
@@ -87,7 +87,13 @@ export async function POST(request: Request) {
       })
     }
 
-    await writeAuditLog({ actorUserId: userId, action: "create", entityType: "cms_entry", entityId: id })
+    await writeAuditLog({
+      actorUserId: userId,
+      action: "create",
+      entityType: "cms_entry",
+      entityId: id,
+      ...auditClientMeta(request),
+    })
     return jsonOk({ id, slug, routePath })
   } catch (error) {
     return errorResponse(error)

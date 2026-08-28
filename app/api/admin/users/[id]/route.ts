@@ -9,7 +9,7 @@ import {
   requireUserId,
 } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
-import { writeAuditLog } from "@/lib/admin/audit"
+import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { sanitizeCapabilities } from "@/lib/auth/capabilities"
 import {
   isAdminUser,
@@ -101,6 +101,7 @@ export async function PATCH(
         action: "delete",
         entityType: "user",
         entityId: id,
+        ...auditClientMeta(request),
       })
       return jsonOk({ id, deletedAt: true })
     }
@@ -111,6 +112,7 @@ export async function PATCH(
       entityType: "user",
       entityId: id,
       metadata: { capabilities: result.capabilities },
+      ...auditClientMeta(request),
     })
     return jsonOk({ id, capabilities: result.capabilities })
   } catch (error) {

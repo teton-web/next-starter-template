@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,11 +22,23 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function EditCmsEntryPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
   const remote: Entry | null = data?.entry ?? null
   const [draft, setDraft] = useState<Entry | null>(null)
   const [message, setMessage] = useState("")
   const entry = draft ?? remote
+
+  async function remove() {
+    if (!entry) return
+    const response = await fetch(`/api/admin/cms/${entry.id}`, { method: "DELETE" })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(typeof body.error === "string" ? body.error : "Delete failed")
+      return
+    }
+    router.push("/admin/content")
+  }
 
   async function save(status?: Entry["status"]) {
     if (!entry) return
@@ -72,6 +84,9 @@ export default function EditCmsEntryPage() {
         <Button variant="outline" onClick={() => void save("in_review")}>Submit review</Button>
         <Button onClick={() => void save("published")}>Publish</Button>
         <Button variant="outline" onClick={() => void save("draft")}>Unpublish</Button>
+        {entry.status === "draft" ? (
+          <Button variant="destructive" onClick={() => void remove()}>Delete</Button>
+        ) : null}
       </div>
     </div>
   )

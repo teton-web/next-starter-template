@@ -11,6 +11,7 @@ Update this table whenever you add a Route Handler.
 | `GET /api/health` | Public (unauthenticated) | DB ping (`select 1`). `200 { ok: true }` when the ping succeeds; `503 { ok: false }` on error. Never includes secrets or connection strings in the JSON. Site-gate exempt in `proxy.ts` (same as static assets). |
 | `GET/POST /api/admin/users` | Session + `admin` capability | Invite-only. POST `{ email, name, capabilities }` → 201; `mustChangePassword` true; welcome/set-password email when Resend is configured. Generic error on duplicate email (no enumeration). Modest rate limit on POST. |
 | `PATCH /api/admin/users/:id` | Session + `admin` capability | `{ capabilities }` (sanitized) or `{ deletedAt: true }`. Cannot strip/soft-delete the last remaining admin. |
+| `GET /api/admin/audit` | Session + `admin` capability | Paginated newest-first audit log (`limit`/`offset`). Read-only; no create/update/delete. |
 
 Site gate (preview/production only) runs in `proxy.ts` before page auth. `GET /api/health` is exempt, like static assets. Cron/webhook bypasses should be added explicitly if you introduce those routes.
 

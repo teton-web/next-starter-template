@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 import { mediaAssets, mediaUsages } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
-import { writeAuditLog } from "@/lib/admin/audit"
+import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
 import { getStorageDriver, storageNotConfiguredMessage } from "@/lib/storage"
 import { mediaObjectKey, validateUploadFile } from "@/lib/media/validate-upload"
 import { mediaLifecycle } from "@/lib/media/lifecycle"
@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       entityType: "media_asset",
       entityId: id,
+      ...auditClientMeta(request),
     })
 
     return jsonOk({ id, url: stored.url, kind: validated.value.kind })
@@ -189,6 +190,7 @@ export async function PATCH(request: NextRequest) {
       action: "update",
       entityType: "media_asset",
       entityId: parsed.id,
+      ...auditClientMeta(request),
     })
     return jsonOk({ success: true })
   } catch (error) {
@@ -229,6 +231,7 @@ export async function DELETE(request: NextRequest) {
       action: "delete",
       entityType: "media_asset",
       entityId: id,
+      ...auditClientMeta(request),
     })
     return jsonOk({ success: true })
   } catch (error) {
