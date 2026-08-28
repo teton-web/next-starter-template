@@ -2,7 +2,7 @@ process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
-import { mockedDb, resetSharedDbExecute, setDbTransaction } from "./helpers/mock-db"
+import { dbInsert, mockedDb, resetSharedDbExecute, resetSharedDbInsert, setDbTransaction } from "./helpers/mock-db"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
@@ -25,7 +25,6 @@ import {
   RESET_PASSWORD_IDENTIFIER_LIKE,
   resetPasswordVerificationsForUser,
 } from "@/lib/auth/reset-password-verifications"
-import { auditClientMeta } from "@/lib/admin/audit"
 import { sessions, users, verifications } from "@/lib/db/schema"
 import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
@@ -289,7 +288,6 @@ const sendWelcomeEmail = mock(
 function isResendConfigured() {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
 }
-const writeAuditLog = mock(async () => undefined)
 
 let existingRows: Array<{
   id: string
@@ -396,10 +394,8 @@ mock.module("@/lib/auth/capabilities", () => ({
   checkCapability,
   sanitizeCapabilities,
 }))
-mock.module("@/lib/admin/audit", () => ({
-  writeAuditLog,
-  auditClientMeta,
-}))
+// Do not mock @/lib/admin/audit: last mock.module wins process-wide and would
+// stub writeAuditLog for writeAuditLogSafe tests. Real writeAuditLog uses mocked db.insert.
 mock.module("@/lib/db", () => ({
   db: mockedDb,
 }))
@@ -407,6 +403,7 @@ mock.module("@/lib/db", () => ({
 function useAdminUsersDb() {
   setDbTransaction((fn) => fn(createTx()))
   resetSharedDbExecute()
+  resetSharedDbInsert()
 }
 
 useAdminUsersDb()
@@ -446,11 +443,9 @@ describe("POST /api/admin/users", () => {
     getSession.mockReset()
     checkCapability.mockReset()
     sendWelcomeEmail.mockReset()
-    writeAuditLog.mockReset()
     getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
     checkCapability.mockImplementation(async () => true)
     sendWelcomeEmail.mockImplementation(async () => undefined)
-    writeAuditLog.mockImplementation(async () => undefined)
     existingRows = []
     credentialRows = []
     lockedRows = []
@@ -510,7 +505,7 @@ describe("POST /api/admin/users", () => {
     }
     expect(sent.user.email).toBe("invitee@example.com")
     expect(sent.url).toContain("https://example.com/reset-password?token=")
-    expect(writeAuditLog).toHaveBeenCalled()
+    expect(dbInsert).toHaveBeenCalled()
   })
 
   test("live duplicate email is a generic 400", async () => {
@@ -626,10 +621,8 @@ describe("PATCH /api/admin/users/[id]", () => {
   beforeEach(() => {
     getSession.mockReset()
     checkCapability.mockReset()
-    writeAuditLog.mockReset()
     getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
     checkCapability.mockImplementation(async () => true)
-    writeAuditLog.mockImplementation(async () => undefined)
     existingRows = []
     credentialRows = []
     lockedRows = [
