@@ -1,7 +1,12 @@
 process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
-import { describe, expect, test } from "bun:test"
+import { beforeEach, describe, expect, mock, test } from "bun:test"
+import { mockedDb, resetSharedDbExecute } from "./helpers/mock-db"
+
+mock.module("@/lib/db", () => ({
+  db: mockedDb,
+}))
 import {
   authRateLimitBucket,
   enforceAuthRouteRateLimit,
@@ -10,6 +15,10 @@ import {
 } from "@/lib/services/rate-limit"
 
 describe("auth rate limit helpers", () => {
+  beforeEach(() => {
+    resetSharedDbExecute()
+  })
+
   test("maps credential sign-in and forgot-password paths", () => {
     expect(authRateLimitBucket("/api/auth/sign-in/email")).toBe("sign-in")
     expect(authRateLimitBucket("/api/auth/request-password-reset")).toBe("forgot-password")

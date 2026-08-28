@@ -2,6 +2,7 @@ process.env.DATABASE_URL ??= "postgresql://ci:ci@localhost:5432/ci"
 process.env.AUTH_SECRET ??= "ci-placeholder-secret-minimum-32-characters"
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { mockedDb, resetSharedDbExecute, setDbTransaction } from "./helpers/mock-db"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
@@ -400,13 +401,15 @@ mock.module("@/lib/admin/audit", () => ({
   auditClientMeta,
 }))
 mock.module("@/lib/db", () => ({
-  db: {
-    transaction: async (fn: (tx: ReturnType<typeof createTx>) => unknown) => fn(createTx()),
-    execute: async () => {
-      throw new Error("use memory rate limit")
-    },
-  },
+  db: mockedDb,
 }))
+
+function useAdminUsersDb() {
+  setDbTransaction((fn) => fn(createTx()))
+  resetSharedDbExecute()
+}
+
+useAdminUsersDb()
 
 const { POST } = await import("@/app/api/admin/users/route")
 const { PATCH } = await import("@/app/api/admin/users/[id]/route")
@@ -453,6 +456,7 @@ describe("POST /api/admin/users", () => {
     lockedRows = []
     transactions = []
     resetMemoryRateLimits()
+    useAdminUsersDb()
     delete process.env.RESEND_API_KEY
     delete process.env.EMAIL_FROM
     delete process.env.NEXT_PUBLIC_BASE_URL
@@ -634,6 +638,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     ]
     transactions = []
     resetMemoryRateLimits()
+    useAdminUsersDb()
   })
 
   test("deletedAt=true deletes outstanding reset-password tokens", async () => {

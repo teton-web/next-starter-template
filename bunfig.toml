@@ -1,3 +1,4 @@
 [test]
 root = "tests"
 pathIgnorePatterns = ["e2e/**"]
+preload = ["./tests/helpers/mock-db.ts"]
