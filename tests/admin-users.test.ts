@@ -24,6 +24,7 @@ import {
   RESET_PASSWORD_IDENTIFIER_LIKE,
   resetPasswordVerificationsForUser,
 } from "@/lib/auth/reset-password-verifications"
+import { auditClientMeta } from "@/lib/admin/audit"
 import { sessions, users, verifications } from "@/lib/db/schema"
 import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
@@ -288,7 +289,6 @@ function isResendConfigured() {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
 }
 const writeAuditLog = mock(async () => undefined)
-const auditClientMeta = mock(() => ({}))
 
 let existingRows: Array<{
   id: string
@@ -444,12 +444,10 @@ describe("POST /api/admin/users", () => {
     checkCapability.mockReset()
     sendWelcomeEmail.mockReset()
     writeAuditLog.mockReset()
-    auditClientMeta.mockReset()
     getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
     checkCapability.mockImplementation(async () => true)
     sendWelcomeEmail.mockImplementation(async () => undefined)
     writeAuditLog.mockImplementation(async () => undefined)
-    auditClientMeta.mockImplementation(() => ({}))
     existingRows = []
     credentialRows = []
     lockedRows = []
@@ -625,11 +623,9 @@ describe("PATCH /api/admin/users/[id]", () => {
     getSession.mockReset()
     checkCapability.mockReset()
     writeAuditLog.mockReset()
-    auditClientMeta.mockReset()
     getSession.mockImplementation(async () => ({ user: { id: "admin-1" } }))
     checkCapability.mockImplementation(async () => true)
     writeAuditLog.mockImplementation(async () => undefined)
-    auditClientMeta.mockImplementation(() => ({}))
     existingRows = []
     credentialRows = []
     lockedRows = [
