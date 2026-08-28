@@ -24,7 +24,7 @@ import {
   RESET_PASSWORD_IDENTIFIER_LIKE,
   resetPasswordVerificationsForUser,
 } from "@/lib/auth/reset-password-verifications"
-import { verifications } from "@/lib/db/schema"
+import { sessions, users, verifications } from "@/lib/db/schema"
 import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
 const root = join(import.meta.dir, "..")
@@ -345,10 +345,21 @@ function createTx() {
   return tx
 }
 
-function verificationOps(trace = transactions[0]) {
+function tableOps(table: unknown, trace = transactions[0]) {
   return (trace?.ops ?? [])
-    .filter((op) => op.table === verifications)
+    .filter((op) => op.table === table)
     .map((op) => op.op)
+}
+
+function verificationOps(trace = transactions[0]) {
+  return tableOps(verifications, trace)
+}
+
+function deleteConditionForTable(table: unknown, trace = transactions[0]) {
+  const deletes = (trace?.ops ?? []).filter((op) => op.op === "delete")
+  const idx = deletes.findIndex((op) => op.table === table)
+  if (idx < 0) return undefined
+  return trace?.deleteConditions[idx]
 }
 
 function sqlMentions(value: unknown, needle: string): boolean {
@@ -571,10 +582,17 @@ describe("POST /api/admin/users", () => {
     const body = await response.json()
     expect(body.id).toBe("restored-1")
     expect(verificationOps()).toEqual(["delete", "insert"])
-    expect(sqlMentions(transactions[0]?.deleteConditions[0], "restored-1")).toBe(true)
-    expect(sqlMentions(transactions[0]?.deleteConditions[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
+    expect(sqlMentions(deleteConditionForTable(verifications), "restored-1")).toBe(true)
+    expect(sqlMentions(deleteConditionForTable(verifications), RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
       true,
     )
+    expect(tableOps(sessions)).toEqual(["delete"])
+    expect(sqlMentions(deleteConditionForTable(sessions), "restored-1")).toBe(true)
+    const ops = transactions[0]?.ops ?? []
+    const sessionDeleteIdx = ops.findIndex((op) => op.op === "delete" && op.table === sessions)
+    const userUpdateIdx = ops.findIndex((op) => op.op === "update" && op.table === users)
+    expect(sessionDeleteIdx).toBeGreaterThanOrEqual(0)
+    expect(userUpdateIdx).toBeGreaterThan(sessionDeleteIdx)
   })
 })
 
@@ -610,13 +628,15 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ id: "u1", deletedAt: true })
     expect(verificationOps()).toEqual(["delete"])
-    expect(sqlMentions(transactions[0]?.deleteConditions[0], "u1")).toBe(true)
-    expect(sqlMentions(transactions[0]?.deleteConditions[0], RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
+    expect(sqlMentions(deleteConditionForTable(verifications), "u1")).toBe(true)
+    expect(sqlMentions(deleteConditionForTable(verifications), RESET_PASSWORD_IDENTIFIER_LIKE)).toBe(
       true,
     )
+    expect(tableOps(sessions)).toEqual(["delete"])
+    expect(sqlMentions(deleteConditionForTable(sessions), "u1")).toBe(true)
   })
 
-  test("capability-only PATCH does not delete reset-password tokens", async () => {
+  test("capability-only PATCH does not delete reset-password tokens or sessions", async () => {
     const response = await PATCH(
       new Request("http://localhost/api/admin/users/u1", {
         method: "PATCH",
@@ -627,6 +647,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     )
     expect(response.status).toBe(200)
     expect(verificationOps()).toEqual([])
+    expect(tableOps(sessions)).toEqual([])
   })
 })
 
