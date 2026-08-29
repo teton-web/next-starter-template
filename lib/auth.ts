@@ -270,7 +270,24 @@ export const auth = betterAuth({
               ? context.body.provider
               : undefined
           const bodyProvider = typeof rawProvider === "string" ? rawProvider : undefined
-          if (shouldClearMustChangePasswordOnSession({ path, bodyProvider })) {
+          const rawParamsId =
+            context?.params && typeof context.params === "object" && "id" in context.params
+              ? context.params.id
+              : undefined
+          const paramsId = typeof rawParamsId === "string" ? rawParamsId : undefined
+          let requestPath: string | undefined
+          const requestUrl =
+            context?.request && typeof context.request === "object" && "url" in context.request
+              ? context.request.url
+              : undefined
+          if (typeof requestUrl === "string" && requestUrl.length > 0) {
+            try {
+              requestPath = new URL(requestUrl).pathname
+            } catch {
+              requestPath = undefined
+            }
+          }
+          if (shouldClearMustChangePasswordOnSession({ path, bodyProvider, paramsId, requestPath })) {
             await db
               .update(schema.users)
               .set({
