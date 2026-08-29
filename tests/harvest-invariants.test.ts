@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { sanitizeAnalyticsProps } from "@/lib/analytics"
 import { checkMemoryRateLimit, resetMemoryRateLimits } from "@/lib/services/rate-limit"
@@ -46,6 +46,21 @@ describe("harvest invariants", () => {
     expect(dependabot).toMatch(/package-ecosystem:\s*github-actions/)
     expect(dependabot).toMatch(/target-branch:\s*dev/)
     expect(dependabot).not.toMatch(/auto-?merge/i)
+  })
+
+  test("capabilities mock.module always includes sanitizeCapabilities", () => {
+    const helper = read("tests/helpers/mock-capabilities.ts")
+    expect(helper).toContain("sanitizeCapabilities")
+    expect(helper).toContain("capabilitiesMockExports")
+    expect(helper).toMatch(/checkCapability:/)
+
+    const files = readdirSync(join(root, "tests")).filter((name) => name.endsWith(".test.ts"))
+    for (const file of files) {
+      const source = read(join("tests", file))
+      if (!source.includes('mock.module("@/lib/auth/capabilities"')) continue
+      expect(source).toContain("capabilitiesMockExports")
+    }
+    expect(read("tests/helpers/mock-db.ts")).toContain("capabilitiesMockExports")
   })
 
   test("next.config noindexes admin/api/auth and supports preview noindex", () => {

@@ -9,6 +9,7 @@ import {
   resetSharedDbTransaction,
   setDbTransaction,
 } from "./helpers/mock-db"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -115,9 +116,7 @@ const revalidatePublic = mock((_scope?: unknown) => undefined)
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/cache/public-cache", () => ({
   revalidatePublic,
 }))

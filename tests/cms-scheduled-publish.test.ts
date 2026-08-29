@@ -9,6 +9,7 @@ import {
   resetSharedDbTransaction,
   setDbTransaction,
 } from "./helpers/mock-db"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -137,9 +138,7 @@ const checkCapability = mock(async () => true)
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 
 let entryRows: Array<Record<string, unknown>> = []
 let latestRevisionRows: Array<{ revisionNumber: number }> = []

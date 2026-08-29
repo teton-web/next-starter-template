@@ -9,6 +9,7 @@ import {
   resetSharedDbTransaction,
   setDbTransaction,
 } from "./helpers/mock-db"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { NextRequest } from "next/server"
 import sharp from "sharp"
@@ -22,9 +23,7 @@ const storageDelete = mock(async (_key: string) => undefined)
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/storage", () => ({
   getStorageDriver: () => ({
     name: "local" as const,
