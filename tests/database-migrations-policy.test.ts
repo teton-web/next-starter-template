@@ -244,6 +244,25 @@ describe("database migrations policy", () => {
     expect(schema).toContain("publishedAt:")
   })
 
+  test("stripe_events migration is committed without a product catalog", () => {
+    expect(existsSync(join(root, "drizzle/0010_stripe_events.sql"))).toBe(true)
+    const sql = read("drizzle/0010_stripe_events.sql")
+    expect(sql).toContain('CREATE TABLE "stripe_events"')
+    expect(sql).toContain('"id" text PRIMARY KEY NOT NULL')
+    expect(sql).toContain('"type" text NOT NULL')
+    expect(sql).toContain("checkout_session_id")
+    expect(sql).toContain("payment_intent_id")
+    expect(sql).toContain('"amount" integer')
+    expect(sql).toContain('"currency" text')
+    expect(sql).toContain('"created_at" timestamp')
+    expect(sql).not.toContain("stripe_products")
+    expect(sql).not.toContain("org_id")
+    expect(read("drizzle/meta/_journal.json")).toContain("0010_stripe_events")
+    const index = read("lib/db/schema/index.ts")
+    expect(index).toContain('from "./stripe-events"')
+    expect(index).not.toContain("stripe-products")
+  })
+
   test("waitlist_entries migration is committed with unique email", () => {
     expect(existsSync(join(root, "drizzle/0007_waitlist_entries.sql"))).toBe(true)
     const sql = read("drizzle/0007_waitlist_entries.sql")

@@ -11,6 +11,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "terms",
   "waitlist",
   "gallery",
+  "pay",
   "llms.txt",
 ])
 

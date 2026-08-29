@@ -12,6 +12,7 @@ describe("cms slugs", () => {
     expect(isReservedSlug("admin")).toBe(true)
     expect(isReservedSlug("waitlist")).toBe(true)
     expect(isReservedSlug("gallery")).toBe(true)
+    expect(isReservedSlug("pay")).toBe(true)
     expect(isReservedSlug("about")).toBe(false)
     expect(isValidSlug("about-us")).toBe(true)
     expect(isValidSlug("Nope")).toBe(false)

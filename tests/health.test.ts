@@ -35,6 +35,7 @@ describe("GET /api/health", () => {
     expect(exempt?.[0]).toContain('pathname === "/api/health"')
     expect(exempt?.[0]).toContain("SITE_GATE_PUBLIC_STATE_PATH")
     expect(exempt?.[0]).toContain("isCronApiPath(pathname)")
+    expect(exempt?.[0]).toContain("isStripeWebhookPath(pathname)")
     expect(proxy).toContain("enforceGate && !isSiteGateExempt(pathname)")
     expect(proxy).toContain("resolveSiteGateEnforce")
     expect(proxy).not.toContain("isSiteGateEnabled() && password && !isStaticAsset(pathname)")

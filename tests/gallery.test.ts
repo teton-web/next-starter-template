@@ -157,9 +157,10 @@ describe("gallery source", () => {
   test("sitemap lists published gallery slugs only when the flag is on", () => {
     const sitemap = read("app/sitemap.ts")
     expect(sitemap).toContain('isEnabled("galleries")')
-    expect(sitemap).toContain('"/gallery"')
+    expect(sitemap).toContain("staticPublicSitemapPaths")
     expect(sitemap).toContain("listPublishedGallerySitemapEntries")
     expect(sitemap).toContain("/gallery/${album.slug}")
+    expect(read("lib/sitemap/static-paths.ts")).toContain('"/gallery"')
     expect(sitemap).not.toContain("status: \"draft\"")
     const queries = read("lib/gallery/queries.ts")
     expect(queries).toContain("listPublishedGallerySitemapEntries")

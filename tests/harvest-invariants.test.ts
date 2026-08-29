@@ -66,6 +66,10 @@ describe("harvest invariants", () => {
     expect(read("app/(public)/gallery/page.tsx")).toContain("notFound")
     expect(read("app/(public)/gallery/page.tsx")).toContain('isEnabled("galleries")')
     expect(read("app/(public)/gallery/[slug]/page.tsx")).toContain("emptyPublishedAlbumMessage")
+    expect(read("app/(public)/pay/page.tsx")).toContain("notFound")
+    expect(read("app/(public)/pay/page.tsx")).toContain('isEnabled("stripe")')
+    expect(read("app/(public)/pay/success/page.tsx")).toContain('isEnabled("stripe")')
+    expect(read("app/(public)/pay/cancel/page.tsx")).toContain('isEnabled("stripe")')
   })
 
   test("cms and media schema are committed", () => {

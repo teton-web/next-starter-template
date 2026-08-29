@@ -15,7 +15,9 @@ Accepted
 - A full media library with usage tracking, archive/purge, and a storage driver (local disk in development, Vercel Blob in preview/production)
 - Doppler-first secrets, migrations-only Drizzle, and search indexing off until `SEARCH_INDEXING_ENABLED=true`
 
-It does **not** ship: ecommerce, i18n URL prefixes, BotID, BlockNote, or product globes/catalogs.
+It ships **simple pay flagged off**: a single Stripe Checkout Session plus a signed, idempotent webhook, gated by `isEnabled('stripe')` (default off; dark without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`).
+
+It does **not** ship: product globes/catalogs, SKUs, subscriptions, customer portal, Shopify, i18n URL prefixes, BotID, or BlockNote.
 
 ## Consequences
 
