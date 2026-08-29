@@ -109,6 +109,23 @@ export function isGoogleOAuthAuthPath(pathname: string): boolean {
   )
 }
 
+/**
+ * Better Auth `session.create` path detector. True only for a Google
+ * session (callback or social POST). Credential/magic-link/reset must
+ * keep `mustChangePassword`. Accepts both Better Auth `context.path`
+ * (`/callback/google`) and the full route (`/api/auth/callback/google`).
+ */
+export function shouldClearMustChangePasswordOnSession(input: {
+  path?: string | null
+  bodyProvider?: string | null
+}): boolean {
+  if (typeof input.path !== "string" || input.path.length === 0) return false
+  const path = normalizePath(input.path)
+  if (path.endsWith(`/callback/${GOOGLE_OAUTH_PROVIDER}`)) return true
+  if (!path.endsWith("/sign-in/social")) return false
+  return input.bodyProvider === GOOGLE_OAUTH_PROVIDER
+}
+
 /** Never 404 `/login`. Social callback / sign-in is 404 when OAuth is dark. */
 export function googleOAuthRouteStatus(input: {
   available: boolean

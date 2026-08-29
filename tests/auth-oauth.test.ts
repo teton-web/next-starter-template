@@ -16,7 +16,9 @@ import {
   googleOAuthValidateUserInfo,
   googleSocialProviders,
   isGoogleOAuthAuthPath,
+  shouldClearMustChangePasswordOnSession,
 } from "@/lib/auth/google-oauth"
+import { shouldRedirectForMustChangePassword } from "@/lib/auth/must-change-password-pure"
 import { LOGIN_GENERIC_ERROR, loginQueryErrorMessage } from "@/lib/auth/login-error-pure"
 import { LoginGoogleButton } from "@/app/(auth)/login/login-form"
 
@@ -100,6 +102,7 @@ describe("google OAuth user decisions", () => {
     expect(createUser).not.toHaveBeenCalled()
   })
 
+  // kind: "link" / 404 / SIGNUP_DISABLED prove account linking, not /admin landing.
   test("existing invited/seeded user is linked and keeps the same user id", () => {
     expect(decideGoogleOAuthSignIn({ available: true, existingUser: live })).toEqual({
       ok: true,
@@ -131,6 +134,7 @@ describe("google OAuth routes", () => {
     expect(googleOAuthDisabledResponse("/login", false)).toBeNull()
   })
 
+  // Flag-off 404 is not proof an invited Google user reaches /admin.
   test("social callback and sign-in are 404 when the flag is off", async () => {
     expect(googleOAuthRouteStatus({ available: false, pathname: "/api/auth/callback/google" })).toBe(404)
     expect(googleOAuthRouteStatus({ available: false, pathname: "/api/auth/sign-in/social" })).toBe(404)
@@ -217,5 +221,109 @@ describe("google OAuth wiring", () => {
     expect(flags.indexOf("## Google OAuth")).toBeGreaterThan(flags.indexOf("## Waitlist"))
     expect(flags).toContain("AUTH_URL || NEXT_PUBLIC_BASE_URL || NEXT_PUBLIC_SITE_URL")
     expect(flags).toContain("/api/auth/link-social")
+    expect(flags).toContain("clears `mustChangePassword`")
+  })
+})
+
+describe("google OAuth mustChangePassword clearer", () => {
+  test("Google callback and social POST clear the flag; email/magic-link/github do not", () => {
+    expect(shouldClearMustChangePasswordOnSession({ path: "/callback/google" })).toBe(true)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/callback/google/" })).toBe(true)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/api/auth/callback/google" })).toBe(true)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/sign-in/social", bodyProvider: "google" }),
+    ).toBe(true)
+    expect(
+      shouldClearMustChangePasswordOnSession({
+        path: "/api/auth/sign-in/social",
+        bodyProvider: "google",
+      }),
+    ).toBe(true)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/sign-in/social" })).toBe(false)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/sign-in/social", bodyProvider: "github" }),
+    ).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/sign-in/email" })).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/magic-link/verify" })).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/reset-password" })).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/callback/github" })).toBe(false)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/link-social", bodyProvider: "google" }),
+    ).toBe(false)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/callback/google", bodyProvider: "github" }),
+    ).toBe(true)
+    expect(shouldClearMustChangePasswordOnSession({ path: undefined })).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({ path: "" })).toBe(false)
+    expect(shouldClearMustChangePasswordOnSession({})).toBe(false)
+  })
+
+  test("Google session clear means /admin is not redirected; credential login still is", () => {
+    expect(shouldRedirectForMustChangePassword("/admin")).toBe(true)
+    expect(shouldRedirectForMustChangePassword("/admin/account")).toBe(false)
+    const googleClears = shouldClearMustChangePasswordOnSession({ path: "/callback/google" })
+    const emailClears = shouldClearMustChangePasswordOnSession({ path: "/sign-in/email" })
+    expect(googleClears).toBe(true)
+    expect(emailClears).toBe(false)
+    const afterGoogleFlag = googleClears ? false : true
+    const afterEmailFlag = emailClears ? false : true
+    expect(afterGoogleFlag && shouldRedirectForMustChangePassword("/admin")).toBe(false)
+    expect(afterEmailFlag && shouldRedirectForMustChangePassword("/admin")).toBe(true)
+  })
+
+  test("mocked session.create.after updates only on Google session paths", async () => {
+    const updates: Array<{ userId: string; mustChangePassword: false }> = []
+    async function sessionCreateAfter(
+      session: { userId: string },
+      context: { path?: string; body?: { provider?: unknown } },
+    ) {
+      const path = typeof context.path === "string" ? context.path : undefined
+      const rawProvider =
+        context.body && typeof context.body === "object" && "provider" in context.body
+          ? context.body.provider
+          : undefined
+      const bodyProvider = typeof rawProvider === "string" ? rawProvider : undefined
+      if (shouldClearMustChangePasswordOnSession({ path, bodyProvider })) {
+        updates.push({ userId: session.userId, mustChangePassword: false })
+      }
+    }
+    await sessionCreateAfter({ userId: "invite-1" }, { path: "/callback/google" })
+    await sessionCreateAfter({ userId: "invite-1" }, { path: "/sign-in/email" })
+    await sessionCreateAfter(
+      { userId: "invite-1" },
+      { path: "/sign-in/social", body: { provider: "google" } },
+    )
+    await sessionCreateAfter(
+      { userId: "invite-1" },
+      { path: "/sign-in/social", body: { provider: 1 } },
+    )
+    expect(updates).toEqual([
+      { userId: "invite-1", mustChangePassword: false },
+      { userId: "invite-1", mustChangePassword: false },
+    ])
+  })
+
+  test("session.create.after (not before) is the Google clearer; cookieCache stays off", () => {
+    const auth = read("lib/auth.ts")
+    expect(auth).not.toContain("cookieCache")
+    const sessionCreate = auth.match(/session:\s*\{\s*create:\s*\{[\s\S]*?delete:\s*\{/)
+    expect(sessionCreate?.[0]).toBeTruthy()
+    const block = sessionCreate![0]
+    const afterIdx = block.indexOf("after:")
+    const before = block.slice(0, afterIdx)
+    const after = block.slice(afterIdx)
+    expect(before).toContain("isAccountBlocked")
+    expect(before).not.toContain("mustChangePassword")
+    expect(before).not.toContain("shouldClearMustChangePasswordOnSession")
+    expect(after).toContain("shouldClearMustChangePasswordOnSession")
+    expect(after).toContain("mustChangePassword: false")
+    expect(after).toContain("isNull(schema.users.deletedAt)")
+    expect(after).toContain("session.userId")
+    expect(after).toContain("writeAuditLogSafe")
+    expect(after.indexOf("writeAuditLogSafe")).toBeLessThan(
+      after.indexOf("shouldClearMustChangePasswordOnSession"),
+    )
+    expect(after).not.toContain("/sign-in/email")
+    expect(auth).toContain("shouldClearMustChangePasswordOnSession({ path, bodyProvider })")
   })
 })
