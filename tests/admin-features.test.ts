@@ -10,6 +10,7 @@ import {
   resetSharedDbTransaction,
   setDbTransaction,
 } from "./helpers/mock-db"
+import { authMockExports } from "./helpers/mock-auth"
 import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
@@ -78,9 +79,7 @@ function installSelect() {
 const getSession = mock(async (): Promise<{ user: { id: string } } | null> => null)
 const checkCapability = mock(async () => false)
 
-mock.module("@/lib/auth", () => ({
-  getSession,
-}))
+mock.module("@/lib/auth", () => authMockExports({ getSession }))
 mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 
 installSelect()

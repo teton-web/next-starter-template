@@ -9,6 +9,7 @@ import {
   resetSharedDbTransaction,
   setDbTransaction,
 } from "./helpers/mock-db"
+import { authMockExports } from "./helpers/mock-auth"
 import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { NextRequest } from "next/server"
@@ -20,9 +21,7 @@ const checkCapability = mock(async () => false)
 const storagePut = mock(async (key: string) => ({ key, url: `https://cdn.test/${key}` }))
 const storageDelete = mock(async (_key: string) => undefined)
 
-mock.module("@/lib/auth", () => ({
-  getSession,
-}))
+mock.module("@/lib/auth", () => authMockExports({ getSession }))
 mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/storage", () => ({
   getStorageDriver: () => ({

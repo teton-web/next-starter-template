@@ -63,6 +63,22 @@ describe("harvest invariants", () => {
     expect(read("tests/helpers/mock-db.ts")).toContain("capabilitiesMockExports")
   })
 
+  test("auth mock.module always includes isResendConfigured", () => {
+    const helper = read("tests/helpers/mock-auth.ts")
+    expect(helper).toContain("isResendConfigured")
+    expect(helper).toContain("sendWelcomeEmail")
+    expect(helper).toContain("isAccountBlocked")
+    expect(helper).toContain("authMockExports")
+
+    const files = readdirSync(join(root, "tests")).filter((name) => name.endsWith(".test.ts"))
+    for (const file of files) {
+      const source = read(join("tests", file))
+      if (!source.includes('mock.module("@/lib/auth"')) continue
+      expect(source).toContain("authMockExports")
+    }
+    expect(read("tests/helpers/mock-db.ts")).toContain("authMockExports")
+  })
+
   test("next.config noindexes admin/api/auth and supports preview noindex", () => {
     const config = read("next.config.mjs")
     expect(config).toContain("/admin/:path*")

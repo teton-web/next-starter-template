@@ -6,6 +6,7 @@ import { dbInsert, mockedDb, resetSharedDbExecute, resetSharedDbInsert, setDbTra
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
+import { authMockExports } from "./helpers/mock-auth"
 import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import {
   countActiveAdmins,
@@ -386,11 +387,9 @@ function sqlMentions(value: unknown, needle: string): boolean {
   return false
 }
 
-mock.module("@/lib/auth", () => ({
-  getSession,
-  sendWelcomeEmail,
-  isResendConfigured,
-}))
+mock.module("@/lib/auth", () =>
+  authMockExports({ getSession, sendWelcomeEmail, isResendConfigured }),
+)
 mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 // Do not mock @/lib/admin/audit: last mock.module wins process-wide and would
 // stub writeAuditLog for writeAuditLogSafe tests. Real writeAuditLog uses mocked db.insert.

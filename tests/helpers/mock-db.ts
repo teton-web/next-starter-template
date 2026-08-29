@@ -1,4 +1,5 @@
 import { mock } from "bun:test"
+import { authMockExports } from "./mock-auth"
 import { capabilitiesMockExports } from "./mock-capabilities"
 
 export const dbInsertValues = mock(async (_row: unknown) => undefined)
@@ -79,6 +80,8 @@ mock.module("@/lib/db", () => ({
   db: mockedDb,
 }))
 
-// Last mock.module("@/lib/auth/capabilities") also wins process-wide. Preload the
-// full ESM surface so a later partial stub cannot drop sanitizeCapabilities on Linux.
+// Last mock.module("@/lib/auth") and "@/lib/auth/capabilities" also win
+// process-wide. Preload the full ESM surfaces so a later partial stub cannot
+// drop isResendConfigured / sanitizeCapabilities on Linux.
+mock.module("@/lib/auth", () => authMockExports())
 mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports())
