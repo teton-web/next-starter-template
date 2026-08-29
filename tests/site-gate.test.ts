@@ -102,6 +102,14 @@ describe("site gate", () => {
     expect(safeSiteGateNext("https://evil.example")).toBe("/")
     expect(safeSiteGateNext("//evil.example")).toBe("/")
     expect(safeSiteGateNext(null)).toBe("/")
+    expect(safeSiteGateNext("/\\evil.example")).toBe("/")
+    expect(safeSiteGateNext("/\\\\evil.example")).toBe("/")
+    expect(safeSiteGateNext("/%5Cevil.example")).toBe("/")
+    expect(safeSiteGateNext("/%5cevil.example")).toBe("/")
+    expect(safeSiteGateNext("/./%5Cevil.com")).toBe("/")
+    expect(safeSiteGateNext("/./\\evil.com")).toBe("/")
+    expect(safeSiteGateNext("/admin\u0000")).toBe("/")
+    expect(safeSiteGateNext("/admin\u007F")).toBe("/")
   })
 
   test("shouldEnforceSiteGate: flag off even with hash; flag on needs password; leftover only without hash", () => {
