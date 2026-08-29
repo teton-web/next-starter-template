@@ -9,6 +9,7 @@ import {
   mockedDb,
   resetSharedDbInsert,
 } from "./helpers/mock-db"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { NextRequest } from "next/server"
 import { cmsEntries, cmsRevisions } from "@/lib/db/schema"
@@ -27,9 +28,7 @@ mock.module("@vercel/analytics/server", () => ({
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/cache/public-cache", () => ({
   revalidatePublic,
 }))

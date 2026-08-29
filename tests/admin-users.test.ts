@@ -6,6 +6,7 @@ import { dbInsert, mockedDb, resetSharedDbExecute, resetSharedDbInsert, setDbTra
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { hasCapability, sanitizeCapabilities } from "@/lib/auth/capabilities-pure"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import {
   countActiveAdmins,
   GENERIC_INVITE_ERROR,
@@ -390,10 +391,7 @@ mock.module("@/lib/auth", () => ({
   sendWelcomeEmail,
   isResendConfigured,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-  sanitizeCapabilities,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 // Do not mock @/lib/admin/audit: last mock.module wins process-wide and would
 // stub writeAuditLog for writeAuditLogSafe tests. Real writeAuditLog uses mocked db.insert.
 mock.module("@/lib/db", () => ({

@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { auditClientMeta } from "@/lib/admin/audit"
 import { forbiddenUnlessAllowed } from "@/lib/api/helpers"
 import { hasCapability } from "@/lib/auth/capabilities-pure"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 
 const root = join(import.meta.dir, "..")
 
@@ -105,9 +106,7 @@ const checkCapability = mock(async () => false)
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 
 const { GET } = await import("@/app/api/admin/audit/route")
 

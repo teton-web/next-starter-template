@@ -8,6 +8,7 @@ import {
   resetSharedDbInsert,
   resetSharedDbTransaction,
 } from "./helpers/mock-db"
+import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { HttpError } from "@/lib/api/http-error"
 import { resetFeatureFlagCache, setCachedDbEnabled } from "@/lib/flags/cache"
@@ -21,9 +22,7 @@ const revalidatePublic = mock((_scope?: unknown) => undefined)
 mock.module("@/lib/auth", () => ({
   getSession,
 }))
-mock.module("@/lib/auth/capabilities", () => ({
-  checkCapability,
-}))
+mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/cache/public-cache", () => ({
   revalidatePublic,
 }))

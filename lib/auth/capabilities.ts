@@ -1,19 +1,32 @@
-export {
-  ADMIN_CAPABILITIES,
-  DEFAULT_CAPABILITIES,
-  hasCapability,
-  roleForCapabilities,
-} from "./capabilities-pure"
-export type { Capability, UserRole } from "./capabilities-pure"
 import {
-  hasCapability,
-  sanitizeCapabilities as sanitizeCapabilitiesPure,
+  ADMIN_CAPABILITIES as adminCapabilitiesFromPure,
+  DEFAULT_CAPABILITIES as defaultCapabilitiesFromPure,
+  hasCapability as hasCapabilityFromPure,
+  roleForCapabilities as roleForCapabilitiesFromPure,
+  sanitizeCapabilities as sanitizeFromPure,
   type Capability,
+  type UserRole,
 } from "./capabilities-pure"
+
+export type { Capability, UserRole }
+
+export const ADMIN_CAPABILITIES = adminCapabilitiesFromPure
+export const DEFAULT_CAPABILITIES = defaultCapabilitiesFromPure
+
+export function hasCapability(
+  caps: Capability[],
+  capability: Capability,
+): boolean {
+  return hasCapabilityFromPure(caps, capability)
+}
+
+export function roleForCapabilities(caps: Capability[]): UserRole {
+  return roleForCapabilitiesFromPure(caps)
+}
 
 /** Local named export so Bun `mock.module` can intercept this file on Linux CI. */
 export function sanitizeCapabilities(raw: unknown): Capability[] {
-  return sanitizeCapabilitiesPure(raw)
+  return sanitizeFromPure(raw)
 }
 
 export async function getUserCapabilities(userId: string): Promise<Capability[]> {
