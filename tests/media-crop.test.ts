@@ -234,17 +234,34 @@ describe("POST /api/admin/media/:id/crop", () => {
     expect(dbSelectForUpdate).toHaveBeenCalledWith("update")
     expect(updates).toHaveLength(1)
     expect(updates[0]?.table).toBe(mediaAssets)
-    expect(updates[0]?.values).toMatchObject({
+    const stored = updates[0]?.values ?? {}
+    expect(stored).toMatchObject({
       width: 40,
       height: 24,
       contentType: "image/jpeg",
-      storageKey: sourceAsset.storageKey,
-      storageUrl: sourceAsset.storageUrl,
     })
-    expect(updates[0]?.values).not.toHaveProperty("filename", "photo-crop.jpg")
-    expect(storagePut.mock.calls.some((call) => call[0] === sourceAsset.storageKey)).toBe(true)
-    expect(storagePut.mock.calls.some((call) => call[0] === sourceAsset.thumbnailKey)).toBe(true)
-    expect(storageDelete).not.toHaveBeenCalled()
+    expect(stored.storageKey).not.toBe(sourceAsset.storageKey)
+    expect(stored.storageUrl).not.toBe(sourceAsset.storageUrl)
+    expect(stored.thumbnailKey).not.toBe(sourceAsset.thumbnailKey)
+    expect(stored.thumbnailUrl).not.toBe(sourceAsset.thumbnailUrl)
+    expect(stored.storageUrl).toBe(`https://cdn.test/${stored.storageKey}`)
+    expect(stored.thumbnailUrl).toBe(`https://cdn.test/${stored.thumbnailKey}`)
+    expect(body.url).toBe(stored.storageUrl)
+    expect(stored).not.toHaveProperty("filename", "photo-crop.jpg")
+    expect(typeof stored.storageKey).toBe("string")
+    expect(stored.storageKey).toMatch(/^media\/image\/\d{4}\/\d{2}\/[0-9a-f-]{36}-photo-crop\.jpg$/)
+
+    const putKeys = storagePut.mock.calls.map((call) => call[0] as string)
+    expect(putKeys).not.toContain(sourceAsset.storageKey)
+    expect(putKeys).not.toContain(sourceAsset.thumbnailKey)
+    expect(putKeys).toContain(stored.storageKey)
+    expect(putKeys).toContain(stored.thumbnailKey)
+
+    const deletedKeys = storageDelete.mock.calls.map((call) => call[0] as string)
+    expect(deletedKeys).toContain(sourceAsset.storageKey)
+    expect(deletedKeys).toContain(sourceAsset.thumbnailKey)
+    expect(deletedKeys).not.toContain(stored.storageKey)
+    expect(deletedKeys).not.toContain(stored.thumbnailKey)
 
     const insertTables = dbInsert.mock.calls.map((call) => call[0])
     expect(insertTables).toContain(auditLogs)
@@ -289,5 +306,17 @@ describe("POST /api/admin/media/:id/crop", () => {
     })
     expect(assetInsert?.id).toBe(body.id)
     expect(storageDelete).not.toHaveBeenCalled()
+  })
+
+  test("replace still succeeds when deleting previous objects fails", async () => {
+    storageDelete.mockImplementation(async () => {
+      throw new Error("blob delete failed")
+    })
+    const response = await POST(cropRequest(await jpegFile(40, 24)), context)
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({ id: "asset-1", mode: "replace" })
+    expect(body.url).not.toBe(sourceAsset.storageUrl)
+    expect(storageDelete).toHaveBeenCalled()
   })
 })
