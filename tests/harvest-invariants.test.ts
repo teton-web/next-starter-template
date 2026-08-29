@@ -60,6 +60,9 @@ describe("harvest invariants", () => {
     expect(read("app/(public)/privacy/page.tsx")).toContain("Privacy")
     expect(read("app/(public)/terms/page.tsx")).toContain("Terms")
     expect(read("app/(public)/contact/page.tsx")).toContain("/api/contact")
+    expect(read("app/(public)/waitlist/page.tsx")).toContain("notFound")
+    expect(read("app/(public)/waitlist/page.tsx")).toContain('isEnabled("waitlist")')
+    expect(read("app/(public)/waitlist/waitlist-form.tsx")).toContain("/api/waitlist")
   })
 
   test("cms and media schema are committed", () => {
@@ -98,6 +101,8 @@ describe("analytics allow-list", () => {
     expect(analytics).toContain("export const ANALYTICS_EVENTS")
     expect(analytics).toContain("contact_submit")
     expect(analytics).toContain("contact_submit_failed")
+    expect(analytics).toContain("waitlist_submit")
+    expect(analytics).toContain("waitlist_submit_failed")
     expect(analytics).toContain("cms_publish")
     expect(analytics).toContain("media_upload")
     expect(analytics).toContain("sanitizeAnalyticsProps")
@@ -111,6 +116,14 @@ describe("analytics allow-list", () => {
     const contactCalls = contact.match(/trackEvent\([^)]*\)/g) ?? []
     expect(contactCalls.length).toBeGreaterThanOrEqual(3)
     for (const call of contactCalls) expect(call).not.toMatch(pii)
+
+    const waitlist = read("lib/waitlist/signup.ts")
+    expect(waitlist).toContain('from "@/lib/analytics"')
+    expect(waitlist).toContain('trackEvent("waitlist_submit")')
+    expect(waitlist).toContain('trackEvent("waitlist_submit_failed"')
+    const waitlistCalls = waitlist.match(/trackEvent\([^)]*\)/g) ?? []
+    expect(waitlistCalls.length).toBeGreaterThanOrEqual(3)
+    for (const call of waitlistCalls) expect(call).not.toMatch(pii)
 
     const cmsPatch = read("app/api/admin/cms/[id]/route.ts")
     expect(cmsPatch).toContain('from "@/lib/analytics"')

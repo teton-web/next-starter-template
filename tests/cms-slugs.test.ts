@@ -10,6 +10,7 @@ describe("cms slugs", () => {
 
   test("reserved slugs cannot be CMS pages", () => {
     expect(isReservedSlug("admin")).toBe(true)
+    expect(isReservedSlug("waitlist")).toBe(true)
     expect(isReservedSlug("about")).toBe(false)
     expect(isValidSlug("about-us")).toBe(true)
     expect(isValidSlug("Nope")).toBe(false)

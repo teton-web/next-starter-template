@@ -50,6 +50,13 @@
       "when": 1787948207479,
       "tag": "0006_feature_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787961267083,
+      "tag": "0007_waitlist_entries",
+      "breakpoints": true
     }
   ]
 }

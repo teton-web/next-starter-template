@@ -2,7 +2,7 @@ import "server-only"
 
 import { desc, eq, inArray } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { auditLogs, cmsEntries, contactInquiries, users } from "@/lib/db/schema"
+import { auditLogs, cmsEntries, contactInquiries, users, waitlistEntries } from "@/lib/db/schema"
 
 const HOME_LIMIT = 10
 const MAX_LIST_LIMIT = 100
@@ -40,6 +40,20 @@ export async function listContactInquiries(limit = HOME_LIMIT) {
     })
     .from(contactInquiries)
     .orderBy(desc(contactInquiries.createdAt))
+    .limit(clampLimit(limit, HOME_LIMIT))
+}
+
+export async function listWaitlistEntries(limit = HOME_LIMIT) {
+  return db
+    .select({
+      id: waitlistEntries.id,
+      name: waitlistEntries.name,
+      email: waitlistEntries.email,
+      source: waitlistEntries.source,
+      createdAt: waitlistEntries.createdAt,
+    })
+    .from(waitlistEntries)
+    .orderBy(desc(waitlistEntries.createdAt))
     .limit(clampLimit(limit, HOME_LIMIT))
 }
 

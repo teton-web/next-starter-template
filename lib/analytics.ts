@@ -3,6 +3,8 @@ import { track } from "@vercel/analytics/server"
 export const ANALYTICS_EVENTS = [
   "contact_submit",
   "contact_submit_failed",
+  "waitlist_submit",
+  "waitlist_submit_failed",
   "cms_publish",
   "media_upload",
 ] as const

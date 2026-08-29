@@ -4,11 +4,13 @@ import { siteName } from "@/lib/site-visibility"
 const primaryNav = [
   { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
+  { href: "/waitlist", label: "Waitlist", flag: "waitlist" },
   { href: "/contact", label: "Contact" },
 ] as const
 
-export function SiteHeader() {
+export function SiteHeader({ waitlistEnabled = false }: { waitlistEnabled?: boolean }) {
   const name = siteName()
+  const nav = primaryNav.filter((item) => !("flag" in item) || (item.flag === "waitlist" && waitlistEnabled))
 
   return (
     <header className="border-b bg-background">
@@ -18,7 +20,7 @@ export function SiteHeader() {
             {name}
           </Link>
           <nav aria-label="Primary" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            {primaryNav.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

@@ -1,10 +1,19 @@
 import { MetadataRoute } from "next"
 import { getCanonicalSiteUrl } from "@/lib/site-visibility"
 import { listPublishedEntries } from "@/lib/cms/queries"
+import { isEnabled } from "@/lib/flags/resolve"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getCanonicalSiteUrl()
-  const staticPaths = ["/", "/contact", "/privacy", "/terms", "/articles"]
+  const waitlistEnabled = await isEnabled("waitlist")
+  const staticPaths = [
+    "/",
+    "/contact",
+    "/privacy",
+    "/terms",
+    "/articles",
+    ...(waitlistEnabled ? ["/waitlist"] : []),
+  ]
 
   let cms: { url: string; lastModified: Date }[] = []
   try {

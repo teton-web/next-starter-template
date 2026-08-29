@@ -9,6 +9,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "reset-password",
   "site-gate",
   "terms",
+  "waitlist",
   "llms.txt",
 ])
 

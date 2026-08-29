@@ -46,6 +46,11 @@ export function AdminShell({
                 Features
               </Link>
             ) : null}
+            {canAdmin ? (
+              <Link href="/admin/waitlist" className="text-sm hover:underline">
+                Waitlist
+              </Link>
+            ) : null}
             <Link href="/admin/account" className="text-sm hover:underline">Account</Link>
             <Link href="/">
               <Button variant="outline" size="sm">

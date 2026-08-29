@@ -204,6 +204,21 @@ describe("database migrations policy", () => {
     expect(index).toContain('from "./feature-flags"')
   })
 
+  test("waitlist_entries migration is committed with unique email", () => {
+    expect(existsSync(join(root, "drizzle/0007_waitlist_entries.sql"))).toBe(true)
+    const sql = read("drizzle/0007_waitlist_entries.sql")
+    expect(sql).toContain('CREATE TABLE "waitlist_entries"')
+    expect(sql).toContain('"email" text NOT NULL')
+    expect(sql).toContain('"name" text')
+    expect(sql).toContain('"source" text')
+    expect(sql).toContain('"created_at" timestamp')
+    expect(sql).toMatch(/waitlist_entries_email_unique|UNIQUE \("email"\)/)
+    expect(sql).not.toContain("org_id")
+    expect(read("drizzle/meta/_journal.json")).toContain("0007_waitlist_entries")
+    const index = read("lib/db/schema/index.ts")
+    expect(index).toContain('from "./waitlist-entries"')
+  })
+
   test("migration policy doc exists", () => {
     expect(existsSync(join(root, "docs/DATABASE_MIGRATIONS.md"))).toBe(true)
     expect(read("docs/DATABASE_MIGRATIONS.md")).toMatch(/never use.*push|Do not use.*push/i)
