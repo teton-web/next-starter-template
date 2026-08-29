@@ -25,6 +25,14 @@ describe("document security headers", () => {
       "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://*.vercel-scripts.com https://vercel.live",
     )
     expect(config).not.toContain("'unsafe-eval'")
+    expect(config).toContain("https://*.vercel-storage.com")
+    expect(config).toContain("https://*.public.blob.vercel-storage.com")
+    expect(config).toContain(
+      "img-src 'self' data: blob: https://*.vercel.com https://*.vercel-scripts.com https://*.vercel-storage.com https://*.public.blob.vercel-storage.com",
+    )
+    expect(config).toContain(
+      "media-src 'self' blob: https://*.vercel-storage.com https://*.public.blob.vercel-storage.com",
+    )
   })
 
   test("TypeScript errors are not ignored", () => {
