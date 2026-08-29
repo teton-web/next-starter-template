@@ -82,6 +82,8 @@ describe("proxy source graph", () => {
     expect(proxy).not.toContain("isPublicWaitlistPath")
     expect(proxy).not.toContain('from "@/lib/waitlist/paths-pure"')
     expect(proxy).not.toContain("/api/waitlist")
+    expect(proxy).not.toContain("/gallery")
+    expect(proxy).not.toContain("/api/admin/gallery")
     expect(proxy).not.toContain("platformUp")
     expect(proxy).not.toContain('from "@/lib/flags/resolve"')
     expect(proxy).not.toContain('from "@/lib/flags/mutate"')
