@@ -89,6 +89,15 @@ describe("unpublished CMS preview (pure)", () => {
       isLivePublishedEntry({ status: "published", publish_at: "2026-08-27T00:00:00.000Z" }, now),
     ).toBe(true)
   })
+
+  test("preview lookup does not apply the public live filter", () => {
+    const queries = read("lib/cms/queries.ts")
+    const previewFn = queries.slice(queries.indexOf("export async function getCmsEntryForPreview"))
+    expect(previewFn).toContain("pickCmsPreviewEntry")
+    expect(previewFn).not.toContain("isLivePublishedEntry")
+    expect(previewFn).not.toContain("publishedEntriesForPublic")
+    expect(previewFn).not.toContain("publiclyListedWhere")
+  })
 })
 
 describe("unpublished CMS preview (source)", () => {

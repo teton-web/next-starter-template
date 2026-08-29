@@ -52,7 +52,7 @@ export function missingEnvReason(key: FlagKey, missing: string[]): string | null
   if (missing.length === 0) return null
   if (key === "stripe") return "Stripe keys missing in Doppler"
   if (key === "oauth") return "Google client id/secret missing in Doppler"
-  if (key === "cron") return "CRON_SECRET missing in Doppler"
+  if (key === "cron" || key === "scheduled_publish") return "CRON_SECRET missing in Doppler"
   if (key === "galleries") return "Blob token missing in Doppler"
   return `Missing Doppler keys: ${missing.join(", ")}`
 }
@@ -68,17 +68,42 @@ export function optionalDbOverlay(
 
 export function resolvedFlagEnabled(
   key: FlagKey,
-  options: { env?: EnvMap; dbEnabled?: boolean | null; config?: Record<string, unknown> | null } = {},
+  options: {
+    env?: EnvMap
+    dbEnabled?: boolean | null
+    config?: Record<string, unknown> | null
+    dependencyDbEnabled?: Partial<Record<FlagKey, boolean | null>>
+  } = {},
 ): boolean {
-  if (!resolveEnabled(key, { env: options.env, dbEnabled: options.dbEnabled })) return false
+  if (
+    !resolveEnabled(key, {
+      env: options.env,
+      dbEnabled: options.dbEnabled,
+      dependencyDbEnabled: options.dependencyDbEnabled,
+    })
+  ) {
+    return false
+  }
   if (key === "site_gate" && !hasStoredSiteGateHash(options.config)) return false
   return true
+}
+
+function overlayFromRow(
+  key: FlagKey,
+  row: FlagRowInput | undefined,
+): boolean | null {
+  if (!row) return null
+  if (isOptionalFlagKey(key)) {
+    return optionalDbOverlay(key, { enabled: row.enabled, config: row.config ?? {} })
+  }
+  return row.enabled
 }
 
 export function describeFlagStatus(
   key: FlagKey,
   row: { enabled: boolean; config?: Record<string, unknown> | null } | null,
   env: EnvMap = process.env,
+  dependencyDbEnabled: Partial<Record<FlagKey, boolean | null>> = {},
 ): FlagStatus {
   const definition = FLAG_CATALOG[key]
   const storedEnabled = row?.enabled ?? null
@@ -90,6 +115,7 @@ export function describeFlagStatus(
     env,
     dbEnabled: storedEnabled,
     config,
+    dependencyDbEnabled,
   })
 
   const reasons: string[] = []
@@ -98,7 +124,10 @@ export function describeFlagStatus(
   const envReason = missingEnvReason(key, missingEnv)
   if (envReason) reasons.push(envReason)
   if (key === "site_gate" && !hasPassword) reasons.push(siteGatePasswordReason())
-  const depReason = dependsOnReason(definition.dependsOn)
+  const unmetDeps = definition.dependsOn.filter(
+    (dep) => !resolveEnabled(dep, { env, dbEnabled: dependencyDbEnabled[dep] ?? null, dependencyDbEnabled }),
+  )
+  const depReason = dependsOnReason(unmetDeps)
   if (depReason) reasons.push(depReason)
   if (storedEnabled === true && !enabled && !lockedOff && !definition.platform) {
     reasons.push("Stored on; stays dark until the reasons above are resolved.")
@@ -126,12 +155,17 @@ export function listFlagStatuses(rows: FlagRowInput[], env: EnvMap = process.env
     if (!isFlagKey(row.key)) continue
     byKey.set(row.key, row)
   }
+  const dependencyDbEnabled: Partial<Record<FlagKey, boolean | null>> = {}
+  for (const key of FLAG_KEYS) {
+    dependencyDbEnabled[key] = overlayFromRow(key, byKey.get(key))
+  }
   return FLAG_KEYS.map((key) => {
     const row = byKey.get(key)
     return describeFlagStatus(
       key,
       row ? { enabled: row.enabled, config: row.config ?? {} } : null,
       env,
+      dependencyDbEnabled,
     )
   })
 }

@@ -23,6 +23,8 @@ export type IsEnabledOptions = {
   dbEnabled?: boolean | null
   /** Row config; required for `site_gate` when `dbEnabled` is injected. */
   config?: Record<string, unknown> | null
+  /** DB overlays for catalog `dependsOn` keys. Omit to read each dependency. */
+  dependencyDbEnabled?: Partial<Record<FlagKey, boolean | null>>
 }
 
 export async function readFlagRow(key: FlagKey): Promise<FlagOverlayRow | null> {
@@ -61,7 +63,12 @@ export async function isEnabled(key: string, options: IsEnabledOptions = {}): Pr
   let config = options.config
   if (options.dbEnabled !== undefined) {
     dbEnabled = options.dbEnabled
-    return resolvedFlagEnabled(key, { env, dbEnabled, config })
+    return resolvedFlagEnabled(key, {
+      env,
+      dbEnabled,
+      config,
+      dependencyDbEnabled: options.dependencyDbEnabled,
+    })
   } else if (isOptionalFlagKey(key)) {
     const cached = getCachedDbEnabled(key)
     if (cached !== undefined) {
@@ -78,7 +85,11 @@ export async function isEnabled(key: string, options: IsEnabledOptions = {}): Pr
         }
         const afterError = getCachedDbEnabled(key)
         if (afterError !== undefined) {
-          return resolveEnabled(key, { env, dbEnabled: afterError })
+          return resolveEnabled(key, {
+            env,
+            dbEnabled: afterError,
+            dependencyDbEnabled: options.dependencyDbEnabled,
+          })
         }
         return false
       }
@@ -98,5 +109,13 @@ export async function isEnabled(key: string, options: IsEnabledOptions = {}): Pr
     dbEnabled = null
   }
 
-  return resolveEnabled(key, { env, dbEnabled })
+  let dependencyDbEnabled = options.dependencyDbEnabled
+  if (!dependencyDbEnabled && definition.dependsOn.length > 0) {
+    dependencyDbEnabled = {}
+    for (const dep of definition.dependsOn) {
+      dependencyDbEnabled[dep] = (await isEnabled(dep, { env })) ? true : false
+    }
+  }
+
+  return resolveEnabled(key, { env, dbEnabled, dependencyDbEnabled })
 }

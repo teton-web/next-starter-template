@@ -140,7 +140,21 @@ describe("feature flag status copy", () => {
 
     const scheduled = flags.find((flag) => flag.key === "scheduled_publish")
     expect(scheduled?.reasons).toContain("Requires cron")
-    expect(scheduled?.enabled).toBe(true)
+    expect(scheduled?.reasons).toContain("CRON_SECRET missing in Doppler")
+    expect(scheduled?.reasons).toContain("Stored on; stays dark until the reasons above are resolved.")
+    expect(scheduled?.enabled).toBe(false)
+    expect(scheduled?.storedEnabled).toBe(true)
+
+    const ready = listFlagStatuses(
+      [
+        { key: "cron", enabled: true, config: {} },
+        { key: "scheduled_publish", enabled: true, config: {} },
+      ],
+      { CRON_SECRET: "cron" },
+    ).find((flag) => flag.key === "scheduled_publish")
+    expect(ready?.enabled).toBe(true)
+    expect(ready?.reasons).not.toContain("Requires cron")
+    expect(ready?.reasons).not.toContain("Stored on; stays dark until the reasons above are resolved.")
 
     const auth = flags.find((flag) => flag.key === "auth")
     expect(auth?.platform).toBe(true)

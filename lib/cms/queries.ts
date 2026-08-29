@@ -1,8 +1,16 @@
-import { and, desc, eq, or } from "drizzle-orm"
+import { and, desc, eq, isNull, lte, or } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { cmsEntries, locales, mediaAssets } from "@/lib/db/schema"
 import { isLivePublishedEntry } from "@/lib/cms/live-pure"
 import { cmsPreviewKeyCandidates, pickCmsPreviewEntry } from "@/lib/cms/preview-pure"
+import { publishedEntriesForPublic } from "@/lib/cms/scheduled-publish-pure"
+
+function publiclyListedWhere(now: Date = new Date()) {
+  return and(
+    eq(cmsEntries.status, "published"),
+    or(isNull(cmsEntries.publishAt), lte(cmsEntries.publishAt, now)),
+  )
+}
 
 export async function getDefaultLocaleId() {
   const rows = await db.select().from(locales).where(eq(locales.isDefault, true)).limit(1)
@@ -20,7 +28,7 @@ export async function getPublishedEntryByPath(routePath: string) {
     })
     .from(cmsEntries)
     .leftJoin(mediaAssets, eq(cmsEntries.heroMediaId, mediaAssets.id))
-    .where(and(eq(cmsEntries.routePath, routePath), eq(cmsEntries.status, "published")))
+    .where(and(eq(cmsEntries.routePath, routePath), publiclyListedWhere()))
     .limit(1)
   if (!rows.length) return null
   if (!isLivePublishedEntry(rows[0].entry)) return null
@@ -33,9 +41,9 @@ export async function listPublishedEntries(entryType: "page" | "article") {
   const rows = await db
     .select()
     .from(cmsEntries)
-    .where(and(eq(cmsEntries.entryType, entryType), eq(cmsEntries.status, "published")))
+    .where(and(eq(cmsEntries.entryType, entryType), publiclyListedWhere()))
     .orderBy(desc(cmsEntries.publishedAt))
-  return rows.filter((row) => isLivePublishedEntry(row))
+  return publishedEntriesForPublic(rows)
 }
 
 export async function getCmsEntryForPreview(idOrSlug: string) {

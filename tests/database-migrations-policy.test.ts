@@ -228,6 +228,22 @@ describe("database migrations policy", () => {
     expect(index).toContain('from "./gallery-albums"')
   })
 
+  test("cms_entries publish_at migration is additive and leaves published_at alone", () => {
+    expect(existsSync(join(root, "drizzle/0009_cms_publish_at.sql"))).toBe(true)
+    const sql = read("drizzle/0009_cms_publish_at.sql")
+    expect(sql).toContain('ALTER TABLE "cms_entries" ADD COLUMN "publish_at" timestamp with time zone')
+    expect(sql).toContain('CREATE INDEX "idx_cms_entries_publish_at"')
+    expect(sql).not.toContain("published_at")
+    expect(sql).not.toContain("RENAME")
+    expect(sql).not.toContain("DROP COLUMN")
+    expect(read("drizzle/meta/_journal.json")).toContain("0009_cms_publish_at")
+    const schema = read("lib/db/schema/cms-entries.ts")
+    expect(schema).toContain('timestamp("published_at")')
+    expect(schema).toContain('timestamp("publish_at", { withTimezone: true })')
+    expect(schema).toContain("publishAt:")
+    expect(schema).toContain("publishedAt:")
+  })
+
   test("waitlist_entries migration is committed with unique email", () => {
     expect(existsSync(join(root, "drizzle/0007_waitlist_entries.sql"))).toBe(true)
     const sql = read("drizzle/0007_waitlist_entries.sql")

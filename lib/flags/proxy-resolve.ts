@@ -52,7 +52,11 @@ export function isEnabledForProxy(key: string, options: ProxyFlagOptions = {}): 
     dbEnabled = overlayDbEnabled(key, options.overrides, options.cookieIssuedAt, options.now)
   }
 
-  return resolveEnabled(key, { env, dbEnabled: dbEnabled ?? null })
+  return resolveEnabled(key, {
+    env,
+    dbEnabled: dbEnabled ?? null,
+    dependencyDbEnabled: options.overrides ?? undefined,
+  })
 }
 
 export async function resolveProxyFlags(
