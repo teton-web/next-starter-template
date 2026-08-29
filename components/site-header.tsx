@@ -4,13 +4,25 @@ import { siteName } from "@/lib/site-visibility"
 const primaryNav = [
   { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
+  { href: "/gallery", label: "Gallery", flag: "galleries" },
   { href: "/waitlist", label: "Waitlist", flag: "waitlist" },
   { href: "/contact", label: "Contact" },
 ] as const
 
-export function SiteHeader({ waitlistEnabled = false }: { waitlistEnabled?: boolean }) {
+export function SiteHeader({
+  waitlistEnabled = false,
+  galleriesEnabled = false,
+}: {
+  waitlistEnabled?: boolean
+  galleriesEnabled?: boolean
+}) {
   const name = siteName()
-  const nav = primaryNav.filter((item) => !("flag" in item) || (item.flag === "waitlist" && waitlistEnabled))
+  const nav = primaryNav.filter((item) => {
+    if (!("flag" in item)) return true
+    if (item.flag === "waitlist") return waitlistEnabled
+    if (item.flag === "galleries") return galleriesEnabled
+    return false
+  })
 
   return (
     <header className="border-b bg-background">

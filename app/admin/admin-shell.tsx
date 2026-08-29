@@ -10,9 +10,11 @@ import Link from "next/link"
 
 export function AdminShell({
   canAdmin,
+  galleriesEnabled = false,
   children,
 }: {
   canAdmin: boolean
+  galleriesEnabled?: boolean
   children: React.ReactNode
 }) {
   const { data: session, isPending } = useSession()
@@ -39,6 +41,11 @@ export function AdminShell({
             <h1 className="text-2xl font-bold">Admin</h1>
             <Link href="/admin/content" className="text-sm hover:underline">Content</Link>
             <Link href="/admin/media" className="text-sm hover:underline">Media</Link>
+            {galleriesEnabled ? (
+              <Link href="/admin/media/gallery" className="text-sm hover:underline">
+                Galleries
+              </Link>
+            ) : null}
             <Link href="/admin/users" className="text-sm hover:underline">Users</Link>
             <Link href="/admin/audit" className="text-sm hover:underline">Audit</Link>
             {canAdmin ? (

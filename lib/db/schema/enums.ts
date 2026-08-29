@@ -18,3 +18,8 @@ export const cmsEntryStatus = pgEnum("cms_entry_status", [
   "in_review",
   "published",
 ])
+
+export const galleryAlbumStatus = pgEnum("gallery_album_status", [
+  "draft",
+  "published",
+])

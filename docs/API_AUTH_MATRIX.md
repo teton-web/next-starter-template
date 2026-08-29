@@ -8,6 +8,9 @@ Update this table whenever you add a Route Handler.
 | `POST /api/admin/change-password` | Session required | Authenticated user only; bcrypt against credential account |
 | `POST /api/upload` | Session required | Alias of `POST /api/admin/media`. Local disk fallback under `public/uploads` |
 | `GET/POST/PATCH/DELETE /api/admin/media` | Session + `admin` or `moderate` | List/upload/update/purge media assets. |
+| `GET/POST /api/admin/gallery` | Session + `admin` or `moderate` | Flag `galleries` (default off). Node `isEnabled` 404 when off (not proxy). List albums + library assets; create album (default draft). Audited `create`. |
+| `GET/PATCH/DELETE /api/admin/gallery/:albumId` | Session + `admin` or `moderate` | Flag `galleries`. Update cover/sort/status (publish is the public switch); delete cascades items. Audited `update`/`delete`. |
+| `POST/PATCH/DELETE /api/admin/gallery/:albumId/items` | Session + `admin` or `moderate` | Flag `galleries`. Attach existing `media_assets` (duplicate in one album → `409`); reorder; remove. Upload into an album uses `POST /api/upload` then attach. |
 | `POST /api/admin/media/:id/crop` | Session + `admin` or `moderate` | FormData `file` cropped through `validateUploadFile`. Images only. Unused assets are replaced in place; assets with `media_usages` rows save as a new asset. |
 | `POST /api/site-gate` | Public | Sets HMAC cookie (`AUTH_SECRET` or `SITE_GATE_SIGNING_SECRET`, not the typed password) when the scrypt `passwordHash` matches, or leftover `SITE_GATE_PASSWORD` when a successful read shows no hash. Password max 1024. Wrong password: `401` JSON, or `303` to `/site-gate?error=invalid` for HTML form posts. DB errors: `503`. |
 | `GET /api/site-gate/public-state` | Public | `{ enforce: boolean }` only (no secrets). Node `isEnabled('site_gate')` + hash/leftover. Short `Cache-Control` max-age. Site-gate exempt so `proxy.ts` can fetch it on a cold overlay. `503` on DB errors. |

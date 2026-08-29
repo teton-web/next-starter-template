@@ -10,6 +10,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "site-gate",
   "terms",
   "waitlist",
+  "gallery",
   "llms.txt",
 ])
 

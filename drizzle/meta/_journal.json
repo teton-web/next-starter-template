@@ -57,6 +57,13 @@
       "when": 1787961267083,
       "tag": "0007_waitlist_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787962614998,
+      "tag": "0008_gallery_albums",
+      "breakpoints": true
     }
   ]
 }

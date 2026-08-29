@@ -59,6 +59,10 @@ Unlock compares against the scrypt hash in Node (`POST /api/site-gate`, constant
 
 Catalog default is **off**. Public `/waitlist`, `POST /api/waitlist`, sitemap, and the header link stay hidden (`404`) unless Node `isEnabled('waitlist')`. Proxy does **not** 404 waitlist (anonymous visitors have no `ff_overrides`). Admin `/admin/waitlist` lists entries for `admin` capability. Duplicate emails are idempotent generic success. Confirmation email is fire-and-forget after insert.
 
+## Galleries
+
+Catalog default is **off**. Schema (`gallery_albums` + `gallery_album_items` on `media_assets`) may exist while UI is dark. Public `/gallery`, `/gallery/[slug]`, sitemap published slugs, header link, admin `/admin/media/gallery` nav, and `/api/admin/gallery*` stay hidden (`404`) unless Node `isEnabled('galleries')`. Proxy does **not** 404 galleries (anonymous visitors have no `ff_overrides`). Draft albums 404 on the public slug; empty published albums show an empty state. Duplicate assets in one album are rejected (`409`). Publish is the public switch; starter Blob is public so publish skips private-blob promote.
+
 ### Clone migration
 
 1. Enable **Site gate** on `/admin/features` and set a password (hash at rest; never shown again).
