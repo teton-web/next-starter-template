@@ -5,11 +5,31 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { signIn, signInMagicLink } from "@/lib/auth-client"
+import { signIn, signInGoogle, signInMagicLink } from "@/lib/auth-client"
 import { passwordChangeRedirectUrl, safeCallbackUrl } from "@/lib/auth/callback-url-pure"
+import { loginQueryErrorMessage } from "@/lib/auth/login-error-pure"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AuthShell } from "@/components/auth-shell"
+
+export function LoginGoogleButton({
+  enabled,
+  busy,
+  loading,
+  onClick,
+}: {
+  enabled: boolean
+  busy: boolean
+  loading: boolean
+  onClick: () => void
+}) {
+  if (!enabled) return null
+  return (
+    <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={onClick}>
+      {loading ? "Redirecting..." : "Continue with Google"}
+    </Button>
+  )
+}
 
 function errorMessage(error: { message?: string; status?: number } | null | undefined, fallback: string) {
   if (error?.status === 429) {
@@ -18,15 +38,22 @@ function errorMessage(error: { message?: string; status?: number } | null | unde
   return error?.message || fallback
 }
 
-export function LoginForm({ magicLinkEnabled }: { magicLinkEnabled: boolean }) {
+export function LoginForm({
+  magicLinkEnabled,
+  googleEnabled,
+}: {
+  magicLinkEnabled: boolean
+  googleEnabled: boolean
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState(() => loginQueryErrorMessage(searchParams.get("error")) ?? "")
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [magicLoading, setMagicLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,7 +103,23 @@ export function LoginForm({ magicLinkEnabled }: { magicLinkEnabled: boolean }) {
     }
   }
 
-  const busy = loading || magicLoading
+  const handleGoogle = async () => {
+    setError("")
+    setMagicLinkSent(false)
+    setGoogleLoading(true)
+    try {
+      const result = await signInGoogle(safeCallbackUrl(searchParams.get("callbackUrl")))
+      if (result.error) {
+        setError(errorMessage(result.error, "Login failed"))
+        setGoogleLoading(false)
+      }
+    } catch {
+      setError("An error occurred during login")
+      setGoogleLoading(false)
+    }
+  }
+
+  const busy = loading || magicLoading || googleLoading
 
   return (
     <AuthShell
@@ -137,6 +180,14 @@ export function LoginForm({ magicLinkEnabled }: { magicLinkEnabled: boolean }) {
           </Button>
         ) : null}
       </form>
+      <div className="mt-4">
+        <LoginGoogleButton
+          enabled={googleEnabled}
+          busy={busy}
+          loading={googleLoading}
+          onClick={handleGoogle}
+        />
+      </div>
     </AuthShell>
   )
 }

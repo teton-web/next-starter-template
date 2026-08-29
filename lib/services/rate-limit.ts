@@ -72,7 +72,7 @@ export function tooManyRequestsResponse(retryAfterMs?: number) {
 
 export function authRateLimitBucket(pathname: string): "sign-in" | "forgot-password" | null {
   const path = pathname.replace(/\/+$/, "")
-  if (path.endsWith("/sign-in/email")) return "sign-in"
+  if (path.endsWith("/sign-in/email") || path.endsWith("/sign-in/social")) return "sign-in"
   if (path.endsWith("/request-password-reset") || path.endsWith("/forget-password")) {
     return "forgot-password"
   }

@@ -8,7 +8,7 @@ A production-ready Next.js starter with authentication, Neon/Drizzle, Doppler-or
 
 - **Next.js 16** with App Router
 - **Drizzle ORM** with Neon PostgreSQL (migrations only)
-- **Better Auth** — credentials + optional Resend magic link (no public signup)
+- **Better Auth** — credentials + optional Resend magic link + optional Google OAuth behind flag `oauth` (no public signup)
 - **Resend** + React Email templates
 - **Tailwind CSS 4** + **shadcn/ui**
 - **TypeScript** (build fails on type errors)
@@ -66,6 +66,7 @@ Open [http://localhost:3000](http://localhost:3000). Sign in at `/login`.
 - Credentials (email + password) via Better Auth with database sessions
 - Public registration is disabled; admins are created by `bun run db:seed`
 - Optional Resend magic-link when `RESEND_API_KEY` and `EMAIL_FROM` are set
+- Optional Google OAuth when flag `oauth` is on and `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set (invite/seed emails only; does not create users)
 - Soft-deleted users (`users.deleted_at`) cannot authenticate
 - Admin UI is at `/admin`; unauthenticated users are sent to `/login?callbackUrl=...`
 

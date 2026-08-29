@@ -4,7 +4,7 @@ Update this table whenever you add a Route Handler.
 
 | Route | Auth | Notes |
 | --- | --- | --- |
-| `GET/POST /api/auth/[...all]` | Public (Better Auth) | `toNextJsHandler` catch-all (`sign-in/email`, password reset, optional magic-link) |
+| `GET/POST /api/auth/[...all]` | Public (Better Auth) | `toNextJsHandler` catch-all (`sign-in/email`, password reset, optional magic-link). Optional Google OAuth when flag `oauth` is on (dark without `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`). Node `isEnabled` 404s `/api/auth/sign-in/social` (including idToken), `/api/auth/callback/google`, and `/api/auth/link-social` when off (not proxy; `/login` stays up). Flag-off social 404s before the sign-in rate limiter. `disableSignUp` + `validateUserInfo`: unknown Google emails do not create users; existing invited/seeded emails are linked. Soft-deleted users cannot authenticate. |
 | `POST /api/admin/change-password` | Session required | Authenticated user only; bcrypt against credential account |
 | `POST /api/upload` | Session required | Alias of `POST /api/admin/media`. Local disk fallback under `public/uploads` |
 | `GET/POST/PATCH/DELETE /api/admin/media` | Session + `admin` or `moderate` | List/upload/update/purge media assets. |

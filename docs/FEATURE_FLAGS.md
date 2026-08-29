@@ -75,6 +75,12 @@ Public queries and the sitemap require `status = published` and (`publish_at` is
 
 `vercel.json` schedules the worker daily (`0 0 * * *`) so Hobby clones can deploy. Pro clones that want the 1-minute AC can change the cron to `* * * * *`. The worker is cadence-agnostic.
 
+## Google OAuth
+
+Catalog default is **off**. `requiresEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]` keeps the flag dark until both Doppler secrets exist (a stored-on row is not enough). `/login` shows **Continue with Google** only when Node `isEnabled('oauth')`. `GET/POST /api/auth/callback/google`, `POST /api/auth/sign-in/social` (including idToken), and `POST /api/auth/link-social` return **404** when the flag is off or keys are missing. Proxy does **not** 404 `/login` (or Google callback). Public signup stays off (`disableSignUp` + `disableImplicitSignUp`); unknown Google emails cannot create a user. An invited or seeded user with the same email is linked and keeps the same user id. Soft-deleted users cannot authenticate (same public error as a bad password). Failed Google returns to `/login?error=` with that same generic copy.
+
+Manual check: create a Google Cloud OAuth **Web** client whose authorized redirect is `{AUTH_URL || NEXT_PUBLIC_BASE_URL || NEXT_PUBLIC_SITE_URL}/api/auth/callback/google` (same Better Auth `baseURL` chain as `lib/auth.ts`; local: `http://localhost:3000/api/auth/callback/google`). Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Doppler. Enable **Google OAuth** on `/admin/features`. Sign in at `/login` with a Google account whose email matches the seed/invite user; confirm you land in `/admin` as that same user. A Gmail that was never invited must not create a row. Disable the flag (or `FEATURE_OAUTH=0`): the Google button is gone and `/api/auth/callback/google` is 404.
+
 ## Clone migration
 
 1. Enable **Site gate** on `/admin/features` and set a password (hash at rest; never shown again).

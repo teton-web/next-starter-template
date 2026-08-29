@@ -16,6 +16,12 @@ import {
   renderWelcomeEmail,
 } from "@/emails/render"
 import { auditClientMeta, writeAuditLogSafe } from "@/lib/admin/audit"
+import {
+  googleOAuthKeysPresent,
+  googleOAuthValidateUserInfo,
+  googleSocialProviders,
+} from "@/lib/auth/google-oauth"
+import { isEnabled } from "@/lib/flags/resolve"
 
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY
@@ -133,6 +139,17 @@ export const auth = betterAuth({
     provider: "pg",
     schema: authSchema,
   }),
+  // Keys at boot register Google; Node `isEnabled("oauth")` 404s the
+  // social routes when the flag is off. `disableSignUp` stays on.
+  socialProviders: googleSocialProviders({
+    flagEnabled: googleOAuthKeysPresent(),
+  }),
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
+  },
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
@@ -186,6 +203,15 @@ export const auth = betterAuth({
         defaultValue: false,
         input: false,
       },
+    },
+    validateUserInfo: async ({ user, source }) => {
+      if (source.oauth?.providerId !== "google") return
+      const email = typeof user.email === "string" ? user.email : ""
+      const existing = email ? await findUserByEmail(email) : null
+      return googleOAuthValidateUserInfo({
+        available: await isEnabled("oauth"),
+        existingUser: existing,
+      })
     },
   },
   hooks: {
