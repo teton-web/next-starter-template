@@ -25,6 +25,9 @@ describe("document security headers", () => {
       "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://*.vercel-scripts.com https://vercel.live",
     )
     expect(config).not.toContain("'unsafe-eval'")
+    expect(config).toContain(
+      "form-action 'self' https://checkout.stripe.com",
+    )
     expect(config).toContain("https://*.vercel-storage.com")
     expect(config).toContain("https://*.public.blob.vercel-storage.com")
     expect(config).toContain(

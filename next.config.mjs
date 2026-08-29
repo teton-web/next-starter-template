@@ -21,7 +21,7 @@ const DOCUMENT_SECURITY_HEADERS = [
       "frame-src 'self' https://vercel.live",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://checkout.stripe.com",
       "object-src 'none'",
     ].join("; "),
   },
