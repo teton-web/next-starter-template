@@ -4,20 +4,24 @@ export const dbInsertValues = mock(async (_row: unknown) => undefined)
 export const dbInsertOnConflictDoUpdate = mock(async (_opts?: unknown) => undefined)
 export const dbInsertOnConflictDoNothing = mock(async (_opts?: unknown) => undefined)
 
+function thenableInsert(pending: Promise<unknown>) {
+  return Object.assign(pending, {
+    returning: (_fields?: unknown) => pending,
+    onConflictDoUpdate: (opts?: unknown) => {
+      dbInsertOnConflictDoUpdate(opts)
+      return thenableInsert(pending)
+    },
+    onConflictDoNothing: (opts?: unknown) => {
+      dbInsertOnConflictDoNothing(opts)
+      return thenableInsert(pending)
+    },
+  })
+}
+
 function insertBuilder(_table: unknown) {
   return {
     values(row: unknown) {
-      const pending = Promise.resolve(dbInsertValues(row))
-      return Object.assign(pending, {
-        onConflictDoUpdate: (opts?: unknown) => {
-          dbInsertOnConflictDoUpdate(opts)
-          return pending
-        },
-        onConflictDoNothing: (opts?: unknown) => {
-          dbInsertOnConflictDoNothing(opts)
-          return pending
-        },
-      })
+      return thenableInsert(Promise.resolve(dbInsertValues(row)))
     },
   }
 }

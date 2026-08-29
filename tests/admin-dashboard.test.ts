@@ -70,6 +70,7 @@ describe("admin dashboard source", () => {
     const queries = read("lib/admin/dashboard.ts")
     expect(queries).toContain('inArray(cmsEntries.status, ["draft", "in_review"])')
     expect(queries).toContain("contactInquiries")
+    expect(queries).toContain("waitlistEntries")
     expect(queries).toContain("auditLogs")
     expect(queries).toContain("catch")
     expect(queries).toContain("return []")

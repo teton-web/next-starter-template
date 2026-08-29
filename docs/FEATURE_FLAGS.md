@@ -55,6 +55,10 @@ Unlock compares against the scrypt hash in Node (`POST /api/site-gate`, constant
 
 `/api/health`, `/api/site-gate/public-state`, and static assets stay exempt.
 
+## Waitlist
+
+Catalog default is **off**. Public `/waitlist`, `POST /api/waitlist`, sitemap, and the header link stay hidden (`404`) unless Node `isEnabled('waitlist')`. Proxy does **not** 404 waitlist (anonymous visitors have no `ff_overrides`). Admin `/admin/waitlist` lists entries for `admin` capability. Duplicate emails are idempotent generic success. Confirmation email is fire-and-forget after insert.
+
 ### Clone migration
 
 1. Enable **Site gate** on `/admin/features` and set a password (hash at rest; never shown again).

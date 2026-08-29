@@ -140,6 +140,9 @@ describe("source invariants", () => {
     expect(header).toContain('label: "Articles"')
     expect(header).toContain('href: "/contact"')
     expect(header).toContain('label: "Contact"')
+    expect(header).toContain('href: "/waitlist"')
+    expect(header).toContain('label: "Waitlist"')
+    expect(header).toContain("waitlistEnabled")
     expect(header).toContain('href="/login"')
     expect(header).toContain("Sign in")
     expect(header).not.toContain("/admin")
@@ -264,6 +267,8 @@ describe("source invariants", () => {
     expect(limiter).toContain("Retry-After")
     expect(read("app/api/contact/route.ts")).toContain('from "@/lib/services/rate-limit"')
     expect(read("app/api/contact/route.ts")).not.toContain("lib/api/rate-limit")
+    expect(read("lib/waitlist/signup.ts")).toContain('from "@/lib/services/rate-limit"')
+    expect(read("lib/waitlist/signup.ts")).toContain("`waitlist:ip:${ip}`")
   })
 
   test("AGENTS.md first-run marker matches package identity", () => {
@@ -311,6 +316,7 @@ describe("source invariants", () => {
     expect(read("app/admin/users/page.tsx")).toContain("disabled={isLastAdmin}")
     expect(read("app/admin/admin-shell.tsx")).toContain('href="/admin/users"')
     expect(read("app/admin/admin-shell.tsx")).toContain('href="/admin/features"')
+    expect(read("app/admin/admin-shell.tsx")).toContain('href="/admin/waitlist"')
     expect(read("app/admin/admin-shell.tsx")).toContain("{canAdmin ? (")
     expect(read("lib/auth.ts")).toContain("disableSignUp: true")
   })
