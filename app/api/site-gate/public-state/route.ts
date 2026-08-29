@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { isEnabled, readFlagRow } from "@/lib/flags/resolve"
-import { hasStoredSiteGateHash } from "@/lib/flags/site-gate-password"
+import { hasStoredSiteGateHash, SITE_GATE_PASSWORD_HASH_KEY } from "@/lib/flags/site-gate-password"
 import { SITE_GATE_PUBLIC_STATE_TTL_MS } from "@/lib/flags/cache"
-import { shouldEnforceSiteGate } from "@/lib/site-gate"
+import { shouldEnforceSiteGate, siteGateUnlockBinding } from "@/lib/site-gate"
 
 const maxAgeSeconds = Math.max(1, Math.floor(SITE_GATE_PUBLIC_STATE_TTL_MS / 1000))
 
@@ -13,12 +13,18 @@ export async function GET() {
       dbEnabled: row?.enabled ?? null,
       config: row?.config ?? {},
     })
+    const hashPresent = hasStoredSiteGateHash(row?.config)
     const enforce = shouldEnforceSiteGate({
       flagEnabled,
-      hashPresent: hasStoredSiteGateHash(row?.config),
+      hashPresent,
     })
+    const storedHash = row?.config?.[SITE_GATE_PASSWORD_HASH_KEY]
+    const hv =
+      enforce && hashPresent && typeof storedHash === "string"
+        ? await siteGateUnlockBinding(storedHash)
+        : ""
     return NextResponse.json(
-      { enforce },
+      hv ? { enforce, hv } : { enforce },
       {
         headers: {
           "Cache-Control": `public, max-age=${maxAgeSeconds}, s-maxage=${maxAgeSeconds}`,

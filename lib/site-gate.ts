@@ -25,7 +25,26 @@ function constantTimeEqual(a: string, b: string) {
   return mismatch === 0
 }
 
-async function signValue(secret: string, expiresAt: number) {
+function bytesToHex(bytes: Uint8Array) {
+  let hex = ""
+  for (const byte of bytes) {
+    hex += byte.toString(16).padStart(2, "0")
+  }
+  return hex
+}
+
+/**
+ * Stable id for the current gate secret material (stored scrypt string, or
+ * leftover env password when there is no hash). HMAC key stays AUTH_SECRET.
+ */
+export async function siteGateUnlockBinding(material: string) {
+  const trimmed = material.trim()
+  if (!trimmed) return ""
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(trimmed))
+  return bytesToHex(new Uint8Array(digest))
+}
+
+async function signValue(secret: string, expiresAt: number, binding: string) {
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     "raw",
@@ -37,7 +56,7 @@ async function signValue(secret: string, expiresAt: number) {
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(`${COOKIE_VERSION}:${expiresAt}`),
+    encoder.encode(`${COOKIE_VERSION}:${expiresAt}:${binding}`),
   )
   return base64UrlEncode(new Uint8Array(signature))
 }
@@ -98,14 +117,19 @@ export function safeSiteGateNext(value: string | null | undefined) {
   }
 }
 
-export async function createSiteGateCookieValue(secret: string) {
+export async function createSiteGateCookieValue(secret: string, binding: string) {
+  if (!secret || !binding) return ""
   const expiresAt = Date.now() + SITE_GATE_MAX_AGE_SECONDS * 1000
-  const signature = await signValue(secret, expiresAt)
+  const signature = await signValue(secret, expiresAt, binding)
   return `${COOKIE_VERSION}.${expiresAt}.${signature}`
 }
 
-export async function verifySiteGateCookie(value: string | undefined, secret: string) {
-  if (!value || !secret) return false
+export async function verifySiteGateCookie(
+  value: string | undefined,
+  secret: string,
+  binding: string,
+) {
+  if (!value || !secret || !binding) return false
 
   const [version, expiresAtRaw, signature] = value.split(".")
   const expiresAt = Number(expiresAtRaw)
@@ -116,6 +140,6 @@ export async function verifySiteGateCookie(value: string | undefined, secret: st
     return false
   }
 
-  const expectedSignature = await signValue(secret, expiresAt)
+  const expectedSignature = await signValue(secret, expiresAt, binding)
   return constantTimeEqual(signature, expectedSignature)
 }

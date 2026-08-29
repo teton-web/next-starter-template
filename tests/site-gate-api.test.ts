@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import {
   SITE_GATE_COOKIE,
   SITE_GATE_PASSWORD_MAX_LENGTH,
+  siteGateUnlockBinding,
   verifySiteGateCookie,
 } from "@/lib/site-gate"
 import { hashSiteGatePassword } from "@/lib/flags/site-gate-password"
 import { resetFeatureFlagCache } from "@/lib/flags/cache"
+import { resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
 type FlagRow = { enabled: boolean; config: Record<string, unknown> }
 
@@ -62,6 +64,7 @@ function formRequest(
 describe("POST /api/site-gate", () => {
   beforeEach(() => {
     resetFeatureFlagCache()
+    resetMemoryRateLimits()
     installFlagSelect([])
     delete process.env.SITE_GATE_PASSWORD
     delete process.env.VERCEL_ENV
@@ -111,8 +114,16 @@ describe("POST /api/site-gate", () => {
     const raw = cookie.match(new RegExp(`${SITE_GATE_COOKIE}=([^;]+)`))?.[1]
     const value = decodeURIComponent(raw ?? "")
     expect(value).toBeTruthy()
-    expect(await verifySiteGateCookie(value, process.env.AUTH_SECRET ?? "")).toBe(true)
-    expect(await verifySiteGateCookie(value, password)).toBe(false)
+    const binding = await siteGateUnlockBinding(hash)
+    expect(await verifySiteGateCookie(value, process.env.AUTH_SECRET ?? "", binding)).toBe(true)
+    expect(await verifySiteGateCookie(value, password, binding)).toBe(false)
+    expect(
+      await verifySiteGateCookie(value, process.env.AUTH_SECRET ?? "", await siteGateUnlockBinding(password)),
+    ).toBe(false)
+    const rotated = await hashSiteGatePassword("rotated-gate")
+    expect(
+      await verifySiteGateCookie(value, process.env.AUTH_SECRET ?? "", await siteGateUnlockBinding(rotated)),
+    ).toBe(false)
   })
 
   test("leftover SITE_GATE_PASSWORD unlocks only when the row has no hash", async () => {
@@ -120,13 +131,41 @@ describe("POST /api/site-gate", () => {
     installFlagSelect([])
     const leftoverOk = await POST(formRequest({ password: "clone-gate", next: "/" }) as never)
     expect(leftoverOk.status).toBe(303)
+    const leftoverCookie = leftoverOk.headers.get("set-cookie") ?? ""
+    const leftoverRaw = leftoverCookie.match(new RegExp(`${SITE_GATE_COOKIE}=([^;]+)`))?.[1]
+    const leftoverValue = decodeURIComponent(leftoverRaw ?? "")
+    const leftoverBinding = await siteGateUnlockBinding("clone-gate")
+    expect(await verifySiteGateCookie(leftoverValue, process.env.AUTH_SECRET ?? "", leftoverBinding)).toBe(true)
 
     const hash = await hashSiteGatePassword("admin-set-gate")
     installFlagSelect([{ enabled: true, config: { passwordHash: hash } }])
+    expect(
+      await verifySiteGateCookie(leftoverValue, process.env.AUTH_SECRET ?? "", await siteGateUnlockBinding(hash)),
+    ).toBe(false)
     const leftoverIgnored = await POST(formRequest({ password: "clone-gate", next: "/" }) as never)
     expect(leftoverIgnored.status).toBe(401)
     const hashedOk = await POST(formRequest({ password: "admin-set-gate", next: "/" }) as never)
     expect(hashedOk.status).toBe(303)
+  })
+
+  test("rate-limits POST before password work", async () => {
+    const hash = await hashSiteGatePassword("correct-gate")
+    installFlagSelect([{ enabled: true, config: { passwordHash: hash } }])
+    const ip = "203.0.113.50"
+    for (let i = 0; i < 5; i += 1) {
+      const response = await POST(
+        formRequest({ password: "wrong", next: "/" }, { "x-forwarded-for": ip }) as never,
+      )
+      expect(response.status).toBe(401)
+    }
+    const blocked = await POST(
+      formRequest({ password: "correct-gate", next: "/" }, { "x-forwarded-for": ip }) as never,
+    )
+    expect(blocked.status).toBe(429)
+    expect(blocked.headers.get("Retry-After")).toBeTruthy()
+    expect(await blocked.json()).toMatchObject({ code: "TOO_MANY_REQUESTS" })
+    expect(blocked.headers.get("set-cookie")).toBeNull()
+    expect(dbSelectLimit.mock.calls.length).toBe(5)
   })
 
   test("oversized password is rejected before scrypt", async () => {
@@ -179,7 +218,7 @@ describe("GET /api/site-gate/public-state", () => {
     const response = await GET_PUBLIC_STATE()
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body).toEqual({ enforce: true })
+    expect(body).toEqual({ enforce: true, hv: await siteGateUnlockBinding(hash) })
     expect(JSON.stringify(body)).not.toContain("passwordHash")
     expect(JSON.stringify(body)).not.toContain("preview-gate")
     expect(JSON.stringify(body)).not.toContain("scrypt")

@@ -15,7 +15,7 @@ import {
   getWarmFlagCacheSnapshot,
   resolveProxyFlags,
 } from "@/lib/flags/proxy-resolve"
-import { resolveSiteGateEnforce } from "@/lib/flags/site-gate-enforce"
+import { resolveSiteGateEnforce, resolveSiteGateUnlockBinding } from "@/lib/flags/site-gate-enforce"
 import { isCronApiPath } from "@/lib/cron/require-cron-secret"
 import { isStripeWebhookPath } from "@/lib/stripe/webhook-path"
 import {
@@ -77,9 +77,14 @@ export async function proxy(request: NextRequest) {
   const enforceGate = await resolveSiteGateEnforce(request, flags)
 
   if (enforceGate && !isSiteGateExempt(pathname)) {
+    const cookieValue = request.cookies.get(SITE_GATE_COOKIE)?.value
+    const binding = cookieValue
+      ? await resolveSiteGateUnlockBinding(request, flags)
+      : ""
     const hasGateAccess = await verifySiteGateCookie(
-      request.cookies.get(SITE_GATE_COOKIE)?.value,
+      cookieValue,
       siteGateSigningSecret(),
+      binding,
     )
 
     if (isGateRoute(pathname)) {
