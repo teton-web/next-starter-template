@@ -2,6 +2,7 @@
 
 import { createAuthClient } from "better-auth/react"
 import { inferAdditionalFields, magicLinkClient } from "better-auth/client/plugins"
+import { loginErrorCallbackUrl } from "@/lib/auth/callback-url-pure"
 
 export const authClient = createAuthClient({
   plugins: [
@@ -29,6 +30,14 @@ export async function signInMagicLink(email: string, callbackURL = "/admin") {
   return authClient.signIn.magicLink({
     email,
     callbackURL,
+  })
+}
+
+export async function signInGoogle(callbackURL = "/admin") {
+  return authClient.signIn.social({
+    provider: "google",
+    callbackURL,
+    errorCallbackURL: loginErrorCallbackUrl(callbackURL),
   })
 }
 

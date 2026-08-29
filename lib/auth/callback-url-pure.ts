@@ -30,6 +30,12 @@ function isAccountCallback(path: string) {
   return path === "/admin/account" || path.startsWith("/admin/account/") || path.startsWith("/admin/account?")
 }
 
+/** Failed Google OAuth returns here so `/login` still has `callbackUrl`. */
+export function loginErrorCallbackUrl(callbackUrl: string | null | undefined) {
+  const dest = safeCallbackUrl(callbackUrl)
+  return `/login?callbackUrl=${encodeURIComponent(dest)}`
+}
+
 export function passwordChangeRedirectUrl(callbackUrl: string | null | undefined) {
   const dest = safeCallbackUrl(callbackUrl)
   if (isAccountCallback(dest)) {

@@ -21,6 +21,7 @@ describe("auth rate limit helpers", () => {
 
   test("maps credential sign-in and forgot-password paths", () => {
     expect(authRateLimitBucket("/api/auth/sign-in/email")).toBe("sign-in")
+    expect(authRateLimitBucket("/api/auth/sign-in/social")).toBe("sign-in")
     expect(authRateLimitBucket("/api/auth/request-password-reset")).toBe("forgot-password")
     expect(authRateLimitBucket("/api/auth/forget-password")).toBe("forgot-password")
     expect(authRateLimitBucket("/api/auth/sign-in/magic-link")).toBeNull()

@@ -15,6 +15,7 @@ import {
 import { resetPasswordTokenFromCtx } from "@/lib/auth/reset-password-token-pure"
 import { publicResetPasswordUrl, setPasswordPageUrl } from "@/lib/auth/reset-password-url-pure"
 import {
+  loginErrorCallbackUrl,
   passwordChangeRedirectUrl,
   postPasswordChangeUrl,
   safeCallbackUrl,
@@ -128,6 +129,16 @@ describe("safeCallbackUrl", () => {
     expect(postPasswordChangeUrl("/admin/account")).toBe("/admin")
     expect(postPasswordChangeUrl(null)).toBe("/admin")
     expect(postPasswordChangeUrl("/\\evil.example/path")).toBe("/admin")
+  })
+
+  test("failed Google OAuth returns to /login with the original callbackUrl", () => {
+    expect(loginErrorCallbackUrl("/admin/content")).toBe("/login?callbackUrl=%2Fadmin%2Fcontent")
+    expect(loginErrorCallbackUrl("/admin/content?tab=pages")).toBe(
+      "/login?callbackUrl=%2Fadmin%2Fcontent%3Ftab%3Dpages",
+    )
+    expect(loginErrorCallbackUrl(null)).toBe("/login?callbackUrl=%2Fadmin")
+    expect(loginErrorCallbackUrl("//evil.example/path")).toBe("/login?callbackUrl=%2Fadmin")
+    expect(loginErrorCallbackUrl("https://evil.example/phish")).toBe("/login?callbackUrl=%2Fadmin")
   })
 })
 

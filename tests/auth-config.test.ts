@@ -36,6 +36,12 @@ describe("Better Auth cutover", () => {
     expect(magicLink?.[0]).toContain("disableSignUp: true")
     expect(auth).toContain("mustChangePassword")
     expect(auth).toContain("renderSignInEmail")
+    expect(auth).toContain("googleSocialProviders")
+    expect(auth).toContain("disableSignUp: true")
+    expect(auth).toContain('trustedProviders: ["google"]')
+    expect(auth).toContain("googleOAuthValidateUserInfo")
+    expect(auth).toContain('isEnabled("oauth")')
+    expect(auth).not.toContain("requestSignUp: true")
   })
 
   test("drizzleAdapter maps Better Auth models to plural tables for joins", () => {
