@@ -8,6 +8,7 @@ import {
   resetSharedDbInsert,
   resetSharedDbTransaction,
 } from "./helpers/mock-db"
+import { authMockExports } from "./helpers/mock-auth"
 import { capabilitiesMockExports } from "./helpers/mock-capabilities"
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { HttpError } from "@/lib/api/http-error"
@@ -19,9 +20,7 @@ const getSession = mock(async (): Promise<{ user: { id: string } } | null> => nu
 const checkCapability = mock(async () => false)
 const revalidatePublic = mock((_scope?: unknown) => undefined)
 
-mock.module("@/lib/auth", () => ({
-  getSession,
-}))
+mock.module("@/lib/auth", () => authMockExports({ getSession }))
 mock.module("@/lib/auth/capabilities", () => capabilitiesMockExports({ checkCapability }))
 mock.module("@/lib/cache/public-cache", () => ({
   revalidatePublic,
