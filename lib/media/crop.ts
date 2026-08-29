@@ -9,6 +9,24 @@ import { persistMediaObject } from "@/lib/media/persist"
 import { mediaObjectKey, type ValidatedUpload } from "@/lib/media/validate-upload"
 import type { StorageDriver } from "@/lib/storage"
 
+async function deleteReplacedCropObjects(
+  driver: StorageDriver,
+  previousKeys: Array<string | null | undefined>,
+  nextKeys: Array<string | null | undefined>,
+) {
+  const keep = new Set(nextKeys.filter((key): key is string => Boolean(key)))
+  const seen = new Set<string>()
+  for (const key of previousKeys) {
+    if (!key || keep.has(key) || seen.has(key)) continue
+    seen.add(key)
+    try {
+      await driver.delete(key)
+    } catch {
+      // leftover object is acceptable; the crop row already committed
+    }
+  }
+}
+
 export async function saveCroppedMedia(input: {
   assetId: string
   userId: string
@@ -31,21 +49,23 @@ export async function saveCroppedMedia(input: {
     const mode = cropSaveMode(usageRows.length)
 
     if (mode === "replace") {
+      const previousStorageKey = asset.storageKey
+      const previousThumbnailKey = asset.thumbnailKey
+      const key = mediaObjectKey("image", crypto.randomUUID(), input.validated.safeFilename)
       const persisted = await persistMediaObject(
         input.driver,
-        asset.storageKey,
+        key,
         input.bytes,
         input.validated.contentType,
         "image",
-        { thumbnailKey: asset.thumbnailKey },
       )
       await tx
         .update(mediaAssets)
         .set({
-          storageUrl: asset.storageUrl,
-          storageKey: asset.storageKey,
-          thumbnailUrl: asset.thumbnailUrl ?? persisted.thumbnailUrl,
-          thumbnailKey: asset.thumbnailKey ?? persisted.thumbnailKey,
+          storageUrl: persisted.stored.url,
+          storageKey: persisted.stored.key,
+          thumbnailUrl: persisted.thumbnailUrl,
+          thumbnailKey: persisted.thumbnailKey,
           contentType: input.validated.contentType,
           sizeBytes: input.validated.sizeBytes,
           width: persisted.width,
@@ -68,11 +88,15 @@ export async function saveCroppedMedia(input: {
 
       return {
         id: asset.id,
-        url: asset.storageUrl,
+        url: persisted.stored.url,
         kind: "image" as const,
-        mode,
+        mode: "replace" as const,
         width: persisted.width,
         height: persisted.height,
+        previousStorageKey,
+        previousThumbnailKey,
+        nextStorageKey: persisted.stored.key,
+        nextThumbnailKey: persisted.thumbnailKey,
       }
     }
 
@@ -118,14 +142,30 @@ export async function saveCroppedMedia(input: {
       id: newId,
       url: persisted.stored.url,
       kind: "image" as const,
-      mode,
+      mode: "create" as const,
       width: persisted.width,
       height: persisted.height,
     }
   })
 
+  if (result.mode === "replace") {
+    await deleteReplacedCropObjects(
+      input.driver,
+      [result.previousStorageKey, result.previousThumbnailKey],
+      [result.nextStorageKey, result.nextThumbnailKey],
+    )
+  }
+
   if (result.mode === "create") {
     trackEvent("media_upload", { kind: "image" })
   }
-  return result
+
+  return {
+    id: result.id,
+    url: result.url,
+    kind: result.kind,
+    mode: result.mode,
+    width: result.width,
+    height: result.height,
+  }
 }
