@@ -20,6 +20,7 @@ import {
   googleOAuthKeysPresent,
   googleOAuthValidateUserInfo,
   googleSocialProviders,
+  shouldClearMustChangePasswordOnSession,
 } from "@/lib/auth/google-oauth"
 import { isEnabled } from "@/lib/flags/resolve"
 
@@ -263,6 +264,21 @@ export const auth = betterAuth({
             entityId: session.userId,
             ...meta,
           })
+          const path = typeof context?.path === "string" ? context.path : undefined
+          const rawProvider =
+            context?.body && typeof context.body === "object" && "provider" in context.body
+              ? context.body.provider
+              : undefined
+          const bodyProvider = typeof rawProvider === "string" ? rawProvider : undefined
+          if (shouldClearMustChangePasswordOnSession({ path, bodyProvider })) {
+            await db
+              .update(schema.users)
+              .set({
+                mustChangePassword: false,
+                updatedAt: new Date(),
+              })
+              .where(and(eq(schema.users.id, session.userId), isNull(schema.users.deletedAt)))
+          }
         },
       },
       delete: {
