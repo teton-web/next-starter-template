@@ -181,6 +181,7 @@ describe("cron docs and proxy exemption", () => {
     expect(proxy).toContain("isCronApiPath")
     const exempt = proxy.match(/function isSiteGateExempt\(pathname: string\) \{[\s\S]*?\n\}/)
     expect(exempt?.[0]).toContain("isCronApiPath(pathname)")
+    expect(exempt?.[0]).toContain("isStripeWebhookPath(pathname)")
     expect(proxy).not.toContain('from "@/lib/flags/resolve"')
     expect(proxy).not.toContain('from "@/lib/db"')
     expect(read("lib/auth/must-change-password-pure.ts")).not.toContain("/api/cron")

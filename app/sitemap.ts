@@ -3,22 +3,20 @@ import { getCanonicalSiteUrl } from "@/lib/site-visibility"
 import { listPublishedEntries } from "@/lib/cms/queries"
 import { listPublishedGallerySitemapEntries } from "@/lib/gallery/queries"
 import { isEnabled } from "@/lib/flags/resolve"
+import { staticPublicSitemapPaths } from "@/lib/sitemap/static-paths"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getCanonicalSiteUrl()
-  const [waitlistEnabled, galleriesEnabled] = await Promise.all([
+  const [waitlistEnabled, galleriesEnabled, stripeEnabled] = await Promise.all([
     isEnabled("waitlist"),
     isEnabled("galleries"),
+    isEnabled("stripe"),
   ])
-  const staticPaths = [
-    "/",
-    "/contact",
-    "/privacy",
-    "/terms",
-    "/articles",
-    ...(waitlistEnabled ? ["/waitlist"] : []),
-    ...(galleriesEnabled ? ["/gallery"] : []),
-  ]
+  const staticPaths = staticPublicSitemapPaths({
+    waitlistEnabled,
+    galleriesEnabled,
+    stripeEnabled,
+  })
 
   let cms: { url: string; lastModified: Date }[] = []
   let gallery: { url: string; lastModified: Date }[] = []

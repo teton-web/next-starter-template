@@ -53,7 +53,11 @@ Flag off + stored hash → public. Flag on + empty password + no leftover → pu
 
 Unlock compares against the scrypt hash in Node (`POST /api/site-gate`, constant-time, max 1024 chars). Leftover plaintext is compared only after a successful read shows no hash (DB errors are 503, not leftover unlock). The unlock cookie is HMAC-SHA256 with `SITE_GATE_SIGNING_SECRET` or `AUTH_SECRET`, never the typed password.
 
-`/api/health`, `/api/site-gate/public-state`, and static assets stay exempt.
+`/api/health`, `/api/site-gate/public-state`, `/api/cron/*`, `POST /api/stripe/webhook`, and static assets stay exempt.
+
+## Stripe
+
+Catalog default is **off**. `requiresEnv: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]` keeps the flag dark until both Doppler secrets exist (a stored-on row is not enough). Public `/pay`, `/pay/success`, `/pay/cancel`, `POST /api/stripe/checkout`, and the sitemap `/pay` entry stay hidden (`404`) unless Node `isEnabled('stripe')`. Proxy does **not** 404 `/pay` (anonymous visitors have no `ff_overrides`). `POST /api/stripe/webhook` is site-gate exempt; unsigned deliveries are always `400` (do not 404 unsigned). Valid signature + flag off returns `503` (no DB write / no products) so Stripe retries. Event ids live in `stripe_events` (`onConflictDoNothing`). One Checkout Session amount from `STRIPE_PRICE_ID` or integer `STRIPE_AMOUNT` cents + `STRIPE_CURRENCY` (no default currency). `/pay` 404s when price/amount is missing. No subscriptions, SKU catalog, or Shopify.
 
 ## Waitlist
 

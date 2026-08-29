@@ -43,7 +43,7 @@ describe("source invariants", () => {
     expect(versions.some((v) => v === "latest" || v === "beta")).toBe(false)
     expect(pkg.dependencies.crypto).toBeUndefined()
     expect(pkg.dependencies.webcrypto).toBeUndefined()
-    expect(pkg.dependencies.stripe).toBeUndefined()
+    expect(pkg.dependencies.stripe).toBe("22.6.0")
   })
 
   test("gitignore does not ignore .env.example", () => {

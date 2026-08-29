@@ -17,6 +17,7 @@ import {
 } from "@/lib/flags/proxy-resolve"
 import { resolveSiteGateEnforce } from "@/lib/flags/site-gate-enforce"
 import { isCronApiPath } from "@/lib/cron/require-cron-secret"
+import { isStripeWebhookPath } from "@/lib/stripe/webhook-path"
 import {
   safeSiteGateNext,
   SITE_GATE_COOKIE,
@@ -45,7 +46,8 @@ function isSiteGateExempt(pathname: string) {
     isStaticAsset(pathname) ||
     pathname === "/api/health" ||
     pathname === SITE_GATE_PUBLIC_STATE_PATH ||
-    isCronApiPath(pathname)
+    isCronApiPath(pathname) ||
+    isStripeWebhookPath(pathname)
   )
 }
 
