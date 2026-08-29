@@ -109,21 +109,50 @@ export function isGoogleOAuthAuthPath(pathname: string): boolean {
   )
 }
 
+const GOOGLE_CALLBACK_TEMPLATE = "/callback/:id"
+
+function normalizedSessionPaths(input: {
+  path?: string | null
+  requestPath?: string | null
+}): string[] {
+  const paths: string[] = []
+  for (const value of [input.path, input.requestPath]) {
+    if (typeof value === "string" && value.length > 0) {
+      paths.push(normalizePath(value))
+    }
+  }
+  return paths
+}
+
 /**
- * Better Auth `session.create` path detector. True only for a Google
- * session (callback or social POST). Credential/magic-link/reset must
- * keep `mustChangePassword`. Accepts both Better Auth `context.path`
- * (`/callback/google`) and the full route (`/api/auth/callback/google`).
+ * Better Auth `session.create` path detector. True for a Google session.
+ * Better Auth 1.7.2 ALS `context.path` is the route template `/callback/:id`
+ * with `params.id` as the provider (`dispatch.mjs` sets `path: endpoint.path`).
+ * Also accepts a filled `/callback/google` pathname and `/sign-in/social` +
+ * `body.provider === "google"` (idToken). Credential/magic-link/reset must
+ * keep `mustChangePassword`.
  */
 export function shouldClearMustChangePasswordOnSession(input: {
   path?: string | null
   bodyProvider?: string | null
+  paramsId?: string | null
+  requestPath?: string | null
 }): boolean {
-  if (typeof input.path !== "string" || input.path.length === 0) return false
-  const path = normalizePath(input.path)
-  if (path.endsWith(`/callback/${GOOGLE_OAUTH_PROVIDER}`)) return true
-  if (!path.endsWith("/sign-in/social")) return false
-  return input.bodyProvider === GOOGLE_OAUTH_PROVIDER
+  const paths = normalizedSessionPaths(input)
+  if (paths.length === 0) return false
+  if (paths.some((path) => path.endsWith(`/callback/${GOOGLE_OAUTH_PROVIDER}`))) return true
+  if (
+    input.paramsId === GOOGLE_OAUTH_PROVIDER &&
+    paths.some(
+      (path) => path === GOOGLE_CALLBACK_TEMPLATE || path.endsWith(GOOGLE_CALLBACK_TEMPLATE),
+    )
+  ) {
+    return true
+  }
+  if (paths.some((path) => path.endsWith("/sign-in/social"))) {
+    return input.bodyProvider === GOOGLE_OAUTH_PROVIDER
+  }
+  return false
 }
 
 /** Never 404 `/login`. Social callback / sign-in is 404 when OAuth is dark. */

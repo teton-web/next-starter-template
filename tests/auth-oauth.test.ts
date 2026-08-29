@@ -226,6 +226,30 @@ describe("google OAuth wiring", () => {
 })
 
 describe("google OAuth mustChangePassword clearer", () => {
+  test("Better Auth ALS /callback/:id + params.id google is the required true case", () => {
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/callback/:id", paramsId: "google" }),
+    ).toBe(true)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/callback/:id/", paramsId: "google" }),
+    ).toBe(true)
+    expect(
+      shouldClearMustChangePasswordOnSession({
+        path: "/api/auth/callback/:id",
+        paramsId: "google",
+      }),
+    ).toBe(true)
+    expect(shouldClearMustChangePasswordOnSession({ path: "/callback/:id" })).toBe(false)
+    expect(
+      shouldClearMustChangePasswordOnSession({ path: "/callback/:id", paramsId: "github" }),
+    ).toBe(false)
+    expect(
+      shouldClearMustChangePasswordOnSession({
+        requestPath: "/api/auth/callback/google",
+      }),
+    ).toBe(true)
+  })
+
   test("Google callback and social POST clear the flag; email/magic-link/github do not", () => {
     expect(shouldClearMustChangePasswordOnSession({ path: "/callback/google" })).toBe(true)
     expect(shouldClearMustChangePasswordOnSession({ path: "/callback/google/" })).toBe(true)
@@ -261,7 +285,10 @@ describe("google OAuth mustChangePassword clearer", () => {
   test("Google session clear means /admin is not redirected; credential login still is", () => {
     expect(shouldRedirectForMustChangePassword("/admin")).toBe(true)
     expect(shouldRedirectForMustChangePassword("/admin/account")).toBe(false)
-    const googleClears = shouldClearMustChangePasswordOnSession({ path: "/callback/google" })
+    const googleClears = shouldClearMustChangePasswordOnSession({
+      path: "/callback/:id",
+      paramsId: "google",
+    })
     const emailClears = shouldClearMustChangePasswordOnSession({ path: "/sign-in/email" })
     expect(googleClears).toBe(true)
     expect(emailClears).toBe(false)
@@ -275,7 +302,12 @@ describe("google OAuth mustChangePassword clearer", () => {
     const updates: Array<{ userId: string; mustChangePassword: false }> = []
     async function sessionCreateAfter(
       session: { userId: string },
-      context: { path?: string; body?: { provider?: unknown } },
+      context: {
+        path?: string
+        body?: { provider?: unknown }
+        params?: { id?: unknown }
+        request?: { url?: unknown }
+      },
     ) {
       const path = typeof context.path === "string" ? context.path : undefined
       const rawProvider =
@@ -283,11 +315,32 @@ describe("google OAuth mustChangePassword clearer", () => {
           ? context.body.provider
           : undefined
       const bodyProvider = typeof rawProvider === "string" ? rawProvider : undefined
-      if (shouldClearMustChangePasswordOnSession({ path, bodyProvider })) {
+      const rawParamsId =
+        context.params && typeof context.params === "object" && "id" in context.params
+          ? context.params.id
+          : undefined
+      const paramsId = typeof rawParamsId === "string" ? rawParamsId : undefined
+      let requestPath: string | undefined
+      const requestUrl =
+        context.request && typeof context.request === "object" && "url" in context.request
+          ? context.request.url
+          : undefined
+      if (typeof requestUrl === "string" && requestUrl.length > 0) {
+        try {
+          requestPath = new URL(requestUrl).pathname
+        } catch {
+          requestPath = undefined
+        }
+      }
+      if (shouldClearMustChangePasswordOnSession({ path, bodyProvider, paramsId, requestPath })) {
         updates.push({ userId: session.userId, mustChangePassword: false })
       }
     }
-    await sessionCreateAfter({ userId: "invite-1" }, { path: "/callback/google" })
+    await sessionCreateAfter(
+      { userId: "invite-1" },
+      { path: "/callback/:id", params: { id: "google" } },
+    )
+    await sessionCreateAfter({ userId: "invite-1" }, { path: "/callback/:id" })
     await sessionCreateAfter({ userId: "invite-1" }, { path: "/sign-in/email" })
     await sessionCreateAfter(
       { userId: "invite-1" },
@@ -297,7 +350,12 @@ describe("google OAuth mustChangePassword clearer", () => {
       { userId: "invite-1" },
       { path: "/sign-in/social", body: { provider: 1 } },
     )
+    await sessionCreateAfter(
+      { userId: "invite-1" },
+      { request: { url: "http://localhost:3000/api/auth/callback/google" } },
+    )
     expect(updates).toEqual([
+      { userId: "invite-1", mustChangePassword: false },
       { userId: "invite-1", mustChangePassword: false },
       { userId: "invite-1", mustChangePassword: false },
     ])
@@ -316,6 +374,8 @@ describe("google OAuth mustChangePassword clearer", () => {
     expect(before).not.toContain("mustChangePassword")
     expect(before).not.toContain("shouldClearMustChangePasswordOnSession")
     expect(after).toContain("shouldClearMustChangePasswordOnSession")
+    expect(after).toContain("paramsId")
+    expect(after).toContain("requestPath")
     expect(after).toContain("mustChangePassword: false")
     expect(after).toContain("isNull(schema.users.deletedAt)")
     expect(after).toContain("session.userId")
@@ -324,6 +384,8 @@ describe("google OAuth mustChangePassword clearer", () => {
       after.indexOf("shouldClearMustChangePasswordOnSession"),
     )
     expect(after).not.toContain("/sign-in/email")
-    expect(auth).toContain("shouldClearMustChangePasswordOnSession({ path, bodyProvider })")
+    expect(auth).toContain(
+      "shouldClearMustChangePasswordOnSession({ path, bodyProvider, paramsId, requestPath })",
+    )
   })
 })
