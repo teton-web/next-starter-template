@@ -25,6 +25,7 @@ type SiteGateHashEntry = {
 
 type SiteGatePublicEnforceEntry = {
   enforce: boolean
+  hv?: string
   issuedAt: number
   expiresAt: number
 }
@@ -129,14 +130,19 @@ export function getCachedSiteGatePublicEnforce(now = Date.now()): boolean | unde
   return liveSiteGatePublicEnforce(now)?.enforce
 }
 
+export function getCachedSiteGateUnlockBinding(now = Date.now()): string | undefined {
+  return liveSiteGatePublicEnforce(now)?.hv
+}
+
 export function setCachedSiteGatePublicEnforce(
   enforce: boolean,
-  options: { now?: number; epoch?: number } = {},
+  options: { now?: number; epoch?: number; hv?: string } = {},
 ): boolean {
   if (options.epoch !== undefined && options.epoch !== epoch) return false
   const now = options.now ?? Date.now()
   siteGatePublicEnforceEntry = {
     enforce,
+    hv: options.hv,
     issuedAt: now,
     expiresAt: now + SITE_GATE_PUBLIC_STATE_TTL_MS,
   }

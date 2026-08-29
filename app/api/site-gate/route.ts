@@ -5,6 +5,7 @@ import {
   SITE_GATE_PASSWORD_HASH_KEY,
   verifySiteGatePassword,
 } from "@/lib/flags/site-gate-password"
+import { checkRateLimit, clientKey, tooManyRequestsResponse } from "@/lib/services/rate-limit"
 import {
   createSiteGateCookieValue,
   isSiteGateEnabled,
@@ -15,6 +16,7 @@ import {
   SITE_GATE_PASSWORD_MAX_LENGTH,
   siteGatePasswordsEqual,
   siteGateSigningSecret,
+  siteGateUnlockBinding,
 } from "@/lib/site-gate"
 
 function shouldUseSecureCookie(request: NextRequest) {
@@ -42,17 +44,18 @@ function invalidUnlock(request: NextRequest, nextPath: string) {
   return NextResponse.json({ error: "Site gate access required." }, { status: 401 })
 }
 
-async function passwordMatchesStored(password: string) {
+async function unlockBindingIfPasswordMatches(password: string) {
   const row = await readFlagRow("site_gate")
   const storedHash = row?.config?.[SITE_GATE_PASSWORD_HASH_KEY]
   const hash = hasStoredSiteGateHash(row?.config) && typeof storedHash === "string" ? storedHash : ""
   if (hash) {
-    return verifySiteGatePassword(password, hash)
+    if (!(await verifySiteGatePassword(password, hash))) return ""
+    return siteGateUnlockBinding(hash)
   }
 
   const leftover = leftoverSiteGatePassword()
-  if (!leftover) return false
-  return siteGatePasswordsEqual(password, leftover)
+  if (!leftover || !siteGatePasswordsEqual(password, leftover)) return ""
+  return siteGateUnlockBinding(leftover)
 }
 
 function unavailableUnlock() {
@@ -60,6 +63,12 @@ function unavailableUnlock() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = clientKey(request)
+  const limited = await checkRateLimit({ key: `site-gate:ip:${ip}`, max: 5, windowMs: 60_000 })
+  if (!limited.allowed) {
+    return tooManyRequestsResponse(limited.retryAfterMs)
+  }
+
   const form = await request.formData()
   const password = String(form.get("password") ?? "")
   const nextPath = safeSiteGateNext(String(form.get("next") ?? "/"))
@@ -67,22 +76,23 @@ export async function POST(request: NextRequest) {
     return invalidUnlock(request, nextPath)
   }
 
-  let matched = false
+  let binding = ""
   try {
-    matched = await passwordMatchesStored(password)
+    binding = await unlockBindingIfPasswordMatches(password)
   } catch {
     return unavailableUnlock()
   }
   const secret = siteGateSigningSecret()
+  const cookieValue = binding && secret ? await createSiteGateCookieValue(secret, binding) : ""
 
-  if (!matched || !secret) {
+  if (!cookieValue) {
     return invalidUnlock(request, nextPath)
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url), { status: 303 })
   response.cookies.set({
     name: SITE_GATE_COOKIE,
-    value: await createSiteGateCookieValue(secret),
+    value: cookieValue,
     httpOnly: true,
     maxAge: SITE_GATE_MAX_AGE_SECONDS,
     path: "/",

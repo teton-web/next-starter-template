@@ -308,6 +308,9 @@ describe("source invariants", () => {
     expect(read("app/api/contact/route.ts")).not.toContain("lib/api/rate-limit")
     expect(read("lib/waitlist/signup.ts")).toContain('from "@/lib/services/rate-limit"')
     expect(read("lib/waitlist/signup.ts")).toContain("`waitlist:ip:${ip}`")
+    expect(read("app/api/site-gate/route.ts")).toContain('from "@/lib/services/rate-limit"')
+    expect(read("app/api/site-gate/route.ts")).toContain("`site-gate:ip:${ip}`")
+    expect(read("app/api/site-gate/route.ts")).toContain("checkRateLimit")
   })
 
   test("AGENTS.md first-run marker matches package identity", () => {

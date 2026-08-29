@@ -11,6 +11,7 @@ import {
   SITE_GATE_PUBLIC_STATE_PATH,
   siteGatePasswordsEqual,
   siteGateSigningSecret,
+  siteGateUnlockBinding,
   verifySiteGateCookie,
 } from "@/lib/site-gate"
 import { hashSiteGatePassword, verifySiteGatePassword } from "@/lib/flags/site-gate-password"
@@ -19,7 +20,7 @@ import {
   setCachedDbEnabled,
   setCachedSiteGatePublicEnforce,
 } from "@/lib/flags/cache"
-import { resolveSiteGateEnforce } from "@/lib/flags/site-gate-enforce"
+import { resolveSiteGateEnforce, resolveSiteGateUnlockBinding } from "@/lib/flags/site-gate-enforce"
 
 const originalVercelEnv = process.env.VERCEL_ENV
 const originalAuth = process.env.AUTH_SECRET
@@ -69,12 +70,30 @@ describe("site gate", () => {
     )
     expect(leftoverSiteGatePassword(env)).toBe("typed-review-password")
 
-    const cookie = await createSiteGateCookieValue(siteGateSigningSecret(env))
-    expect(await verifySiteGateCookie(cookie, siteGateSigningSecret(env))).toBe(true)
-    expect(await verifySiteGateCookie(cookie, env.SITE_GATE_PASSWORD)).toBe(false)
-    expect(await verifySiteGateCookie(`${cookie}x`, siteGateSigningSecret(env))).toBe(false)
-    expect(await verifySiteGateCookie(cookie.replace("v1", "v2"), siteGateSigningSecret(env))).toBe(false)
-    expect(await verifySiteGateCookie(undefined, siteGateSigningSecret(env))).toBe(false)
+    const binding = await siteGateUnlockBinding("scrypt$stored-hash-material")
+    const cookie = await createSiteGateCookieValue(siteGateSigningSecret(env), binding)
+    expect(await verifySiteGateCookie(cookie, siteGateSigningSecret(env), binding)).toBe(true)
+    expect(await verifySiteGateCookie(cookie, env.SITE_GATE_PASSWORD, binding)).toBe(false)
+    expect(await verifySiteGateCookie(`${cookie}x`, siteGateSigningSecret(env), binding)).toBe(false)
+    expect(await verifySiteGateCookie(cookie.replace("v1", "v2"), siteGateSigningSecret(env), binding)).toBe(false)
+    expect(await verifySiteGateCookie(undefined, siteGateSigningSecret(env), binding)).toBe(false)
+    expect(await verifySiteGateCookie(cookie, siteGateSigningSecret(env), "")).toBe(false)
+  })
+
+  test("rotating the password hash binding invalidates outstanding cookies", async () => {
+    const secret = "auth-secret-minimum-32-characters!!"
+    const firstHash = await hashSiteGatePassword("gate-one")
+    const rotatedHash = await hashSiteGatePassword("gate-two")
+    const firstBinding = await siteGateUnlockBinding(firstHash)
+    const rotatedBinding = await siteGateUnlockBinding(rotatedHash)
+    expect(firstBinding).not.toBe(rotatedBinding)
+    expect(firstBinding).not.toContain("scrypt")
+    expect(await siteGateUnlockBinding("gate-one")).not.toBe(firstBinding)
+
+    const cookie = await createSiteGateCookieValue(secret, firstBinding)
+    expect(await verifySiteGateCookie(cookie, secret, firstBinding)).toBe(true)
+    expect(await verifySiteGateCookie(cookie, secret, rotatedBinding)).toBe(false)
+    expect(await verifySiteGateCookie(cookie, "gate-one", firstBinding)).toBe(false)
   })
 
   test("safeSiteGateNext rejects open redirects", () => {
@@ -178,6 +197,8 @@ describe("site gate", () => {
     expect(read("lib/flags/site-gate-enforce.ts")).not.toContain("@/lib/db")
     expect(read("lib/flags/site-gate-enforce.ts")).not.toContain("drizzle-orm")
     expect(read("lib/flags/site-gate-enforce.ts")).not.toContain('from "./resolve"')
+    expect(read("lib/site-gate.ts")).toContain("siteGateUnlockBinding")
+    expect(read("proxy.ts")).toContain("resolveSiteGateUnlockBinding")
     expect(SITE_GATE_PASSWORD_MAX_LENGTH).toBe(1024)
     expect(SITE_GATE_PUBLIC_STATE_PATH).toBe("/api/site-gate/public-state")
   })
@@ -307,5 +328,47 @@ describe("site gate", () => {
     )
     expect(cached).toBe(true)
     expect(fetched).toBe(0)
+  })
+
+  test("unlock binding uses public-state hv, leftover only when no hash is known", async () => {
+    const hash = await hashSiteGatePassword("preview-gate")
+    const hv = await siteGateUnlockBinding(hash)
+    const leftoverBinding = await siteGateUnlockBinding("clone-gate")
+    const request = { url: "https://preview.example/" }
+
+    const fromHv = await resolveSiteGateUnlockBinding(
+      request,
+      { isEnabled: () => true, siteGateHashPresent: true },
+      {
+        env: { VERCEL_ENV: "preview", SITE_GATE_PASSWORD: "clone-gate" },
+        fetchImpl: (async () =>
+          new Response(JSON.stringify({ enforce: true, hv }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          })) as typeof fetch,
+      },
+    )
+    expect(fromHv).toBe(hv)
+
+    resetFeatureFlagCache()
+    const leftover = await resolveSiteGateUnlockBinding(
+      request,
+      { isEnabled: () => false, siteGateHashPresent: false },
+      { env: { VERCEL_ENV: "preview", SITE_GATE_PASSWORD: "clone-gate" } },
+    )
+    expect(leftover).toBe(leftoverBinding)
+
+    resetFeatureFlagCache()
+    const failed = await resolveSiteGateUnlockBinding(
+      request,
+      { isEnabled: () => true, siteGateHashPresent: undefined },
+      {
+        env: { VERCEL_ENV: "preview", SITE_GATE_PASSWORD: "clone-gate" },
+        fetchImpl: (async () => {
+          throw new Error("network")
+        }) as typeof fetch,
+      },
+    )
+    expect(failed).toBe("")
   })
 })

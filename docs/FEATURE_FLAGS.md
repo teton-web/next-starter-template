@@ -10,7 +10,7 @@ See also: [ADR 0001](adr/0001-starter-boundaries.md) · [gold-standard inventory
 2. Platform keys (`auth`, `admin`, `cms`, `media`, `contact`, `seo`, `analytics`, `theme`) stay on unless killed in Doppler. Admin/DB cannot turn them off
 3. Optional keys: DB `enabled` when a row exists, otherwise the catalog default (off)
 4. Required env still keeps a flag dark (`stripe`, `oauth`, `cron`, galleries blob on Vercel)
-5. Node `isEnabled('site_gate')` also requires a stored password hash in `feature_flags.config` (`passwordHash`). Flag on + empty password stays dark. Proxy learns hash-presence from the `ff_overrides` cookie/`sgh` overlay (never Neon, never the hash bytes). When that overlay is cold, preview/prod `proxy.ts` fetches `GET /api/site-gate/public-state` `{ enforce }` (Node; no secrets) with a short TTL. Fetch failure fail-closes the gate.
+5. Node `isEnabled('site_gate')` also requires a stored password hash in `feature_flags.config` (`passwordHash`). Flag on + empty password stays dark. Proxy learns hash-presence from the `ff_overrides` cookie/`sgh` overlay (never Neon, never the hash bytes). When that overlay is cold, preview/prod `proxy.ts` fetches `GET /api/site-gate/public-state` `{ enforce, hv? }` (Node; `hv` is a SHA-256 of the stored hash encoding, not the password) with a short TTL. Fetch failure fail-closes the gate.
 
 `dependsOn` is a hard gate for Node `isEnabled` and `/admin/features` `enabled` (today: `scheduled_publish` requires `cron`). Admins manage flags at `/admin/features` (session + `admin`). PATCH sets `ff_overrides` for the proxy overlay.
 
@@ -53,7 +53,7 @@ Anonymous visitors do not need `ff_overrides`. Warm proxy overlay uses cookie/me
 
 Flag off + stored hash → public. Flag on + empty password + no leftover → public. `FEATURE_SITE_GATE=0` hard-off.
 
-Unlock compares against the scrypt hash in Node (`POST /api/site-gate`, constant-time, max 1024 chars). Leftover plaintext is compared only after a successful read shows no hash (DB errors are 503, not leftover unlock). The unlock cookie is HMAC-SHA256 with `SITE_GATE_SIGNING_SECRET` or `AUTH_SECRET`, never the typed password.
+Unlock compares against the scrypt hash in Node (`POST /api/site-gate`, constant-time, max 1024 chars, IP rate-limited like other public POSTs). Leftover plaintext is compared only after a successful read shows no hash (DB errors are 503, not leftover unlock). The unlock cookie is HMAC-SHA256 with `SITE_GATE_SIGNING_SECRET` or `AUTH_SECRET`, never the typed password. The MAC payload includes a digest of the current stored hash (or leftover env password when there is no hash) so rotating the password invalidates outstanding cookies. Proxy re-MACs with leftover env or public-state `hv`; it does not HMAC with the review password.
 
 `/api/health`, `/api/site-gate/public-state`, `/api/cron/*`, `POST /api/stripe/webhook`, and static assets stay exempt.
 
