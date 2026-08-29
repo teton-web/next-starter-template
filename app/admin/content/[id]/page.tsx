@@ -7,8 +7,13 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cmsPreviewPath } from "@/lib/cms/preview-pure"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CmsRevisionList, type CmsRevisionListItem } from "@/components/admin/cms-revision-list"
+import {
+  datetimeLocalToUtcIso,
+  utcToDatetimeLocalValue,
+} from "@/lib/cms/scheduled-publish-pure"
 
 type Entry = {
   id: string
@@ -19,6 +24,7 @@ type Entry = {
   status: "draft" | "in_review" | "published"
   heroMediaId: string | null
   routePath: string
+  publishAt: string | Date | null
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -29,6 +35,7 @@ export default function EditCmsEntryPage() {
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
   const remote: Entry | null = data?.entry ?? null
   const revisions: CmsRevisionListItem[] = data?.revisions ?? []
+  const scheduledPublishEnabled = data?.scheduledPublishEnabled === true
   const [draft, setDraft] = useState<Entry | null>(null)
   const [message, setMessage] = useState("")
   const entry = draft ?? remote
@@ -56,6 +63,9 @@ export default function EditCmsEntryPage() {
         body: entry.body,
         heroMediaId: entry.heroMediaId,
         status: status ?? entry.status,
+        ...(scheduledPublishEnabled
+          ? { publishAt: entry.publishAt ? new Date(entry.publishAt).toISOString() : null }
+          : {}),
       }),
     })
     const body = await response.json()
@@ -82,6 +92,25 @@ export default function EditCmsEntryPage() {
         placeholder="Hero media asset id"
       />
       <Textarea rows={16} value={entry.body} onChange={(e) => setDraft({ ...entry, body: e.target.value })} />
+      {scheduledPublishEnabled ? (
+        <div className="space-y-2">
+          <Label htmlFor="cms-publish-at">Publish at</Label>
+          <Input
+            id="cms-publish-at"
+            type="datetime-local"
+            value={utcToDatetimeLocalValue(entry.publishAt)}
+            onChange={(e) => {
+              const next = datetimeLocalToUtcIso(e.target.value)
+              if (next === undefined) return
+              setDraft({
+                ...entry,
+                publishAt: next,
+              })
+            }}
+          />
+          <p className="text-xs text-muted-foreground">Stored as UTC. Shown in your local timezone.</p>
+        </div>
+      ) : null}
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline">

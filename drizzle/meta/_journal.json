@@ -64,6 +64,13 @@
       "when": 1787962614998,
       "tag": "0008_gallery_albums",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787964000000,
+      "tag": "0009_cms_publish_at",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,16 @@ import { canHardDeleteCmsEntry } from "@/lib/cms/delete-pure"
 import { restoreCmsRevision } from "@/lib/cms/restore"
 import { revalidatePublic } from "@/lib/cache/public-cache"
 import { trackEvent } from "@/lib/analytics"
+import { isEnabled } from "@/lib/flags/resolve"
+import {
+  INVALID_PUBLISH_AT_MESSAGE,
+  SCHEDULED_PUBLISH_DISABLED_MESSAGE,
+  assertPublishAtAllowed,
+  nextCmsStatusForSave,
+  nextPublishAtForSave,
+  nextPublishedAtForSave,
+  parsePublishAtInput,
+} from "@/lib/cms/scheduled-publish-pure"
 
 const patchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -19,6 +29,7 @@ const patchSchema = z.object({
   body: z.string().optional(),
   heroMediaId: z.string().nullable().optional(),
   status: z.enum(["draft", "in_review", "published"]).optional(),
+  publishAt: z.union([z.string(), z.null()]).optional(),
   restoreRevisionId: z.string().optional(),
 })
 
@@ -31,6 +42,14 @@ async function requireEditor() {
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  return getCmsEntryResponse(_request, context)
+}
+
+export async function getCmsEntryResponse(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+  scheduledPublishEnabled?: boolean,
+) {
   try {
     const auth = await requireEditor()
     if (auth instanceof Response) return auth
@@ -50,13 +69,26 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       .leftJoin(users, eq(cmsRevisions.createdByUserId, users.id))
       .where(eq(cmsRevisions.entryId, id))
       .orderBy(desc(cmsRevisions.revisionNumber))
-    return jsonOk({ entry, revisions })
+    return jsonOk({
+      entry,
+      revisions,
+      scheduledPublishEnabled: scheduledPublishEnabled ?? (await isEnabled("scheduled_publish")),
+    })
   } catch (error) {
     return errorResponse(error)
   }
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  return patchCmsEntryResponse(request, context)
+}
+
+export async function patchCmsEntryResponse(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+  scheduledPublishEnabled?: boolean,
+  now: Date = new Date(),
+) {
   try {
     const userId = await requireEditor()
     if (userId instanceof Response) return userId
@@ -64,7 +96,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const [entry] = await db.select().from(cmsEntries).where(eq(cmsEntries.id, id)).limit(1)
     if (!entry) throw new HttpError(404, "Entry not found")
 
-    const parsed = patchSchema.parse(await request.json())
+    let raw: unknown
+    try {
+      raw = await request.json()
+    } catch {
+      throw new HttpError(400, "Invalid JSON body")
+    }
+    const parsedResult = patchSchema.safeParse(raw)
+    if (!parsedResult.success) {
+      throw new HttpError(422, parsedResult.error.message)
+    }
+    const parsed = parsedResult.data
 
     if (parsed.restoreRevisionId) {
       const result = await restoreCmsRevision({
@@ -79,8 +121,40 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const slug = parsed.slug && isValidSlug(parsed.slug) ? parsed.slug : entry.slug
     if (isReservedSlug(slug)) throw new HttpError(400, "Reserved slug")
     const body = parsed.body !== undefined ? sanitizeCmsHtml(parsed.body) : entry.body
-    const status = parsed.status ?? entry.status
     const routePath = routeForEntry(entry.entryType, slug)
+    let parsedPublishAt: Date | null | undefined
+    try {
+      parsedPublishAt = parsed.publishAt === undefined ? undefined : parsePublishAtInput(parsed.publishAt)
+    } catch {
+      throw new HttpError(422, INVALID_PUBLISH_AT_MESSAGE)
+    }
+    try {
+      assertPublishAtAllowed(
+        parsedPublishAt,
+        scheduledPublishEnabled ?? (parsedPublishAt ? await isEnabled("scheduled_publish") : true),
+      )
+    } catch (error) {
+      if (error instanceof Error && error.message === SCHEDULED_PUBLISH_DISABLED_MESSAGE) {
+        throw new HttpError(400, SCHEDULED_PUBLISH_DISABLED_MESSAGE)
+      }
+      throw error
+    }
+    const requestedStatus = parsed.status ?? entry.status
+    const scheduledForStatus = parsedPublishAt === undefined ? entry.publishAt : parsedPublishAt
+    const status = nextCmsStatusForSave({
+      requestedStatus,
+      previousStatus: entry.status,
+      publishAt: scheduledForStatus,
+      now,
+    })
+    const resolvedPublishAt = nextPublishAtForSave({
+      status,
+      previousStatus: entry.status,
+      previousPublishAt: entry.publishAt,
+      previousPublishedAt: entry.publishedAt,
+      parsedPublishAt,
+      now,
+    })
 
     await db
       .update(cmsEntries)
@@ -92,9 +166,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         body,
         heroMediaId: parsed.heroMediaId === undefined ? entry.heroMediaId : parsed.heroMediaId,
         status,
-        publishedAt: status === "published" ? entry.publishedAt ?? new Date() : status === "draft" ? null : entry.publishedAt,
+        publishAt: resolvedPublishAt,
+        publishedAt: nextPublishedAtForSave({
+          status,
+          previousPublishedAt: entry.publishedAt,
+          publishAt: resolvedPublishAt,
+          now,
+        }),
         updatedByUserId: userId,
-        updatedAt: new Date(),
+        updatedAt: now,
         translationsStale: Boolean(entry.sourceEntryId) ? false : entry.translationsStale,
       })
       .where(eq(cmsEntries.id, id))

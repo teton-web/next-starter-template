@@ -77,6 +77,7 @@ export const FLAG_CATALOG: { [K in FlagKey]: FlagDefinition & { key: K } } = {
   galleries: optionalFlag("galleries", "Galleries"),
   scheduled_publish: optionalFlag("scheduled_publish", "Scheduled publish", {
     dependsOn: ["cron"],
+    requiresEnv: ["CRON_SECRET"],
   }),
   oauth: optionalFlag("oauth", "Google OAuth", {
     requiresEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],

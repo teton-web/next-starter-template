@@ -15,6 +15,7 @@ export type CmsEntryRestoreSource = {
   heroMediaId: string | null
   status: "draft" | "in_review" | "published"
   publishedAt: Date | null
+  publishAt?: Date | null
 }
 
 export type CmsWorkingDraft = {
@@ -25,6 +26,7 @@ export type CmsWorkingDraft = {
   heroMediaId: string | null
   status: "draft"
   publishedAt: null
+  publishAt: null
 }
 
 export function parseCmsRevisionSnapshot(raw: unknown): CmsRevisionSnapshot {
@@ -60,6 +62,7 @@ export function workingDraftFromRevision(
     heroMediaId: snapshot.heroMediaId === undefined ? entry.heroMediaId : snapshot.heroMediaId,
     status: "draft",
     publishedAt: null,
+    publishAt: null,
   }
 }
 

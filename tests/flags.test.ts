@@ -115,6 +115,7 @@ describe("feature flag catalog", () => {
     expect(FLAG_CATALOG.oauth.requiresEnv).toEqual(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"])
     expect(FLAG_CATALOG.cron.requiresEnv).toEqual(["CRON_SECRET"])
     expect(FLAG_CATALOG.scheduled_publish.dependsOn).toEqual(["cron"])
+    expect(FLAG_CATALOG.scheduled_publish.requiresEnv).toEqual(["CRON_SECRET"])
     expect(FLAG_CATALOG.galleries.requiresEnv).toEqual([])
   })
 })
@@ -175,9 +176,27 @@ describe("isEnabled resolution", () => {
     expect(await isEnabled("site_gate", { env: {} })).toBe(true)
   })
 
-  test("dependsOn is metadata only: scheduled_publish DB-on does not require cron", async () => {
-    expect(await isEnabled("scheduled_publish", { env: {}, dbEnabled: true })).toBe(true)
+  test("scheduled_publish stays dark unless cron is on and CRON_SECRET is set", async () => {
+    expect(await isEnabled("scheduled_publish", { env: {}, dbEnabled: true })).toBe(false)
     expect(await isEnabled("cron", { env: {}, dbEnabled: true })).toBe(false)
+    expect(
+      await isEnabled("scheduled_publish", { env: { CRON_SECRET: "cron" }, dbEnabled: true }),
+    ).toBe(false)
+    expect(
+      await isEnabled("scheduled_publish", {
+        env: { CRON_SECRET: "cron" },
+        dbEnabled: true,
+        dependencyDbEnabled: { cron: true },
+      }),
+    ).toBe(true)
+    expect(resolveEnabled("scheduled_publish", { env: {}, dbEnabled: true })).toBe(false)
+    expect(
+      resolveEnabled("scheduled_publish", {
+        env: { CRON_SECRET: "cron" },
+        dbEnabled: true,
+        dependencyDbEnabled: { cron: true },
+      }),
+    ).toBe(true)
   })
 
   test("Doppler FEATURE_<KEY>=0 hard-off beats a DB on row", async () => {

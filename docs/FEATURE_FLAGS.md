@@ -10,7 +10,7 @@ Flags live in `lib/flags/`. Resolution is shared; **where** the DB overlay comes
 4. Required env still keeps a flag dark (`stripe`, `oauth`, `cron`, galleries blob on Vercel)
 5. Node `isEnabled('site_gate')` also requires a stored password hash in `feature_flags.config` (`passwordHash`). Flag on + empty password stays dark. Proxy learns hash-presence from the `ff_overrides` cookie/`sgh` overlay (never Neon, never the hash bytes). When that overlay is cold, preview/prod `proxy.ts` fetches `GET /api/site-gate/public-state` `{ enforce }` (Node; no secrets) with a short TTL. Fetch failure fail-closes the gate.
 
-`dependsOn` is catalog metadata only; it is not walked. Admins manage flags at `/admin/features` (session + `admin`). PATCH sets `ff_overrides` for the proxy overlay.
+`dependsOn` is a hard gate for Node `isEnabled` and `/admin/features` `enabled` (today: `scheduled_publish` requires `cron`). Admins manage flags at `/admin/features` (session + `admin`). PATCH sets `ff_overrides` for the proxy overlay.
 
 ## Node vs proxy
 
@@ -63,7 +63,15 @@ Catalog default is **off**. Public `/waitlist`, `POST /api/waitlist`, sitemap, a
 
 Catalog default is **off**. Schema (`gallery_albums` + `gallery_album_items` on `media_assets`) may exist while UI is dark. Public `/gallery`, `/gallery/[slug]`, sitemap published slugs, header link, admin `/admin/media/gallery` nav, and `/api/admin/gallery*` stay hidden (`404`) unless Node `isEnabled('galleries')`. Proxy does **not** 404 galleries (anonymous visitors have no `ff_overrides`). Draft albums 404 on the public slug; empty published albums show an empty state. Duplicate assets in one album are rejected (`409`). Publish is the public switch; starter Blob is public so publish skips private-blob promote.
 
-### Clone migration
+## Scheduled publish
+
+Catalog default is **off**. `dependsOn: ["cron"]` is a **hard gate**: `isEnabled('scheduled_publish')` stays false unless `cron` resolves on (which itself requires Doppler `CRON_SECRET`). `/admin/features` reports `enabled: false` and a “Requires cron” / “stays dark” reason until that is true. The admin date picker on `/admin/content/[id]` and `GET /api/cron/publish` stay hidden/404 while the flag is dark. Flag-off cron 404s **before** `requireCronSecret`. Proxy does **not** 404 CMS public routes.
+
+Public queries and the sitemap require `status = published` and (`publish_at` is null or `publish_at <= now()`). A future `publishAt` keeps the entry `draft` or `in_review` until `GET /api/cron/publish` flips it. Unpublished preview may still show those rows to `moderate` admins.
+
+`vercel.json` schedules the worker daily (`0 0 * * *`) so Hobby clones can deploy. Pro clones that want the 1-minute AC can change the cron to `* * * * *`. The worker is cadence-agnostic.
+
+## Clone migration
 
 1. Enable **Site gate** on `/admin/features` and set a password (hash at rest; never shown again).
 2. Leftover `SITE_GATE_PASSWORD` is only needed while the flag row has no hash so a pull does not go public. After the hash is stored, remove it from Doppler — public-state (not leftover env) keeps anonymous preview/prod gated.

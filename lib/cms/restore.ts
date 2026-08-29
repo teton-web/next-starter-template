@@ -89,6 +89,7 @@ export async function restoreCmsRevision(input: {
         heroMediaId: restored.heroMediaId,
         status: restored.status,
         publishedAt: restored.publishedAt,
+        publishAt: restored.publishAt,
         updatedByUserId: input.userId,
         updatedAt: now,
         translationsStale: Boolean(entry.sourceEntryId) ? false : entry.translationsStale,

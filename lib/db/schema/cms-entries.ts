@@ -20,6 +20,7 @@ export const cmsEntries = pgTable("cms_entries", {
   sourceEntryId: text("source_entry_id"),
   translationsStale: boolean("translations_stale").default(false).notNull(),
   publishedAt: timestamp("published_at"),
+  publishAt: timestamp("publish_at", { withTimezone: true }),
   createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
   updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -32,6 +33,7 @@ export const cmsEntries = pgTable("cms_entries", {
   ),
   localeRouteIdx: uniqueIndex("idx_cms_entries_locale_route").on(table.localeId, table.routePath),
   statusIdx: index("idx_cms_entries_status").on(table.status),
+  publishAtIdx: index("idx_cms_entries_publish_at").on(table.publishAt),
 }))
 
 export const cmsEntriesRelations = relations(cmsEntries, ({ many, one }) => ({

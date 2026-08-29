@@ -76,6 +76,7 @@ describe("cms restore pure", () => {
       heroMediaId: "hero-old",
       status: "draft",
       publishedAt: null,
+      publishAt: null,
     })
     expect(nextCmsRevisionNumber(2)).toBe(3)
     expect(cmsRevisionSnapshotFromDraft(draft)).not.toHaveProperty("publishedAt")
@@ -306,6 +307,7 @@ describe("POST /api/admin/cms/:id/restore", () => {
       heroMediaId: "hero-old",
       status: "draft",
       publishedAt: null,
+      publishAt: null,
       updatedByUserId: "editor-1",
     })
     expect(entryUpdate?.values).not.toHaveProperty("publishedAt", publishedAt)
