@@ -9,6 +9,14 @@ function read(rel: string) {
   return readFileSync(join(root, rel), "utf8")
 }
 
+function markdownSection(src: string, heading: string) {
+  const start = src.indexOf(heading)
+  expect(start).toBeGreaterThan(-1)
+  const rest = src.slice(start + heading.length)
+  const next = rest.search(/\n#{1,3} /)
+  return src.slice(start, start + heading.length + (next === -1 ? rest.length : next))
+}
+
 describe("source invariants", () => {
   test("proxy sends unauthenticated admin users to /login with callbackUrl", () => {
     const proxy = read("proxy.ts")
@@ -288,6 +296,62 @@ describe("source invariants", () => {
       expect(agents).toContain("## Linear")
       expect(agents).toContain("## Secrets")
     }
+  })
+
+  test("README and AGENTS document Better Auth, isEnabled, and migrate-only clone path", () => {
+    const readme = read("README.md")
+    const agents = read("AGENTS.md")
+    const pkg = JSON.parse(read("package.json")) as { description?: string }
+    const ci = read(".github/workflows/ci.yml")
+    const clonePath = markdownSection(readme, "### Clone path (new product)")
+    const maintainers = markdownSection(readme, "### This template (maintainers)")
+
+    expect(clonePath).toContain("doppler setup --project <slug>")
+    expect(clonePath).toContain("cd <slug>")
+    expect(clonePath).not.toContain("doppler setup --project next-starter-template")
+    expect(clonePath).not.toContain("cd next-starter-template")
+    expect(clonePath).toMatch(/^bun run db:migrate$/m)
+    expect(clonePath).toMatch(/^bun run db:seed$/m)
+    expect(clonePath).not.toMatch(/db:migrate:force/)
+    expect(clonePath).toContain("Never `db:push`")
+    expect(clonePath).toContain("change the seed password")
+    expect(clonePath).toContain("/admin/features")
+    expect(clonePath).toContain("enable **only** the optional flags")
+
+    expect(maintainers).toContain("doppler setup --project next-starter-template --config development")
+
+    expect(readme).toContain("Better Auth")
+    expect(readme).toMatch(/\bisEnabled\(/)
+    expect(readme).toContain("`origin/dev`")
+    expect(readme).not.toMatch(/origin\/development/)
+    expect(readme).toContain("site_gate")
+    expect(readme).toContain("Bill Lax")
+    expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
+    expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
+    expect(readme).toContain("Do not set `RESEND_API_KEY` in CI stubs")
+    expect(readme).toContain("GitHub **About** and topics")
+    expect(readme).toContain("`better-auth`")
+    expect(readme).toContain("not Auth.js")
+    expect(readme.replaceAll("not Auth.js", "")).not.toContain("Auth.js")
+    expect(readme).not.toContain("next-auth")
+    expect(readme).not.toContain("NextAuth")
+    expect(readme.toLowerCase().replaceAll("not auth.js", "")).not.toContain("authjs")
+
+    expect(pkg.description).toContain("Better Auth")
+    expect(pkg.description).not.toContain("Auth.js")
+
+    expect(agents).toContain("<!-- first-run: starter-onboard -->")
+    expect(agents).toMatch(/\bisEnabled\b/)
+    expect(agents).toContain("FEATURE_<KEY>=0")
+    expect(agents).toMatch(/bun run db:migrate(?![:\w])/)
+    expect(agents).not.toMatch(/db:migrate:force/)
+    expect(agents).toContain("`db:push`")
+    expect(agents).toContain("must not open Neon per request")
+    expect(agents).toContain("not UI-off")
+    expect(agents).toContain("Better Auth")
+    expect(agents).not.toContain("Auth.js")
+
+    expect(ci).not.toMatch(/^\s*RESEND_API_KEY:/m)
   })
 
   test("admin users API exists, requires admin capability, and has no public register", () => {
