@@ -1,6 +1,9 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Compass } from "lucide-react"
+
+export const metadata: Metadata = { title: "Page not found" }
 
 export default function NotFound() {
   return (
