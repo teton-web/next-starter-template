@@ -43,6 +43,33 @@ describe("dashboard formatters", () => {
       }),
     ).toBe("login · system")
   })
+
+  test("formatAuditSummary omits user UUIDs when actor email is present", () => {
+    expect(
+      formatAuditSummary({
+        action: "login",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("login · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "logout",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("logout · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "login",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: null,
+      }),
+    ).toBe("login user 3be0c8e6-033d-4e1f-be5f-0e918c2a0118 · system")
+  })
 })
 
 describe("admin dashboard source", () => {
