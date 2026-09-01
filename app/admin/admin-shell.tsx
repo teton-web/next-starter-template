@@ -11,10 +11,12 @@ import Link from "next/link"
 export function AdminShell({
   canAdmin,
   galleriesEnabled = false,
+  waitlistEnabled = false,
   children,
 }: {
   canAdmin: boolean
   galleriesEnabled?: boolean
+  waitlistEnabled?: boolean
   children: React.ReactNode
 }) {
   const { data: session, isPending } = useSession()
@@ -58,7 +60,7 @@ export function AdminShell({
                 Contact
               </Link>
             ) : null}
-            {canAdmin ? (
+            {canAdmin && waitlistEnabled ? (
               <Link href="/admin/waitlist" className="text-sm hover:underline">
                 Waitlist
               </Link>

@@ -9,9 +9,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await getSession()
   const canAdmin = session?.user?.id ? await checkCapability(session.user.id, "admin") : false
   const galleriesEnabled = await isEnabled("galleries")
+  const waitlistEnabled = await isEnabled("waitlist")
 
   return (
-    <AdminShell canAdmin={canAdmin} galleriesEnabled={galleriesEnabled}>
+    <AdminShell
+      canAdmin={canAdmin}
+      galleriesEnabled={galleriesEnabled}
+      waitlistEnabled={waitlistEnabled}
+    >
       {children}
     </AdminShell>
   )
