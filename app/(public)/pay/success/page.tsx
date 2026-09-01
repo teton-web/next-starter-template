@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,12 @@ export const PAY_SUCCESS_HEADING = "Checkout"
 export const PAY_SUCCESS_BODY =
   "If you completed checkout, you will receive a receipt from Stripe."
 
-export const metadata = { title: "Checkout" }
+export async function generateMetadata(): Promise<Metadata> {
+  if (!(await isEnabled("stripe"))) {
+    notFound()
+  }
+  return { title: "Checkout" }
+}
 
 export default async function PaySuccessPage() {
   if (!(await isEnabled("stripe"))) {
