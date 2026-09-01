@@ -50,26 +50,30 @@ export default function AdminContentPage() {
         </select>
         <Button type="submit">Create draft</Button>
       </form>
-      <ul className="divide-y rounded-lg border">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <p className="font-medium">{entry.title}</p>
-              <p className="text-xs text-muted-foreground">
-                {entry.entryType} · {entry.status} · {entry.routePath}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm">
-                <Link href={cmsPreviewPath(entry.id)}>Preview</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/admin/content/${entry.id}`}>Edit</Link>
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {entries.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No content yet. Create a draft with the form above.</p>
+      ) : (
+        <ul className="divide-y rounded-lg border">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="font-medium">{entry.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {entry.entryType} · {entry.status} · {entry.routePath}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link href={cmsPreviewPath(entry.id)}>Preview</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/admin/content/${entry.id}`}>Edit</Link>
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
