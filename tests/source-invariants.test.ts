@@ -154,10 +154,26 @@ describe("source invariants", () => {
     expect(header).toContain('href: "/gallery"')
     expect(header).toContain('label: "Gallery"')
     expect(header).toContain("galleriesEnabled")
-    expect(header).toContain('href="/login"')
+    expect(header).toContain("signedIn")
+    expect(header).toContain('"/login"')
     expect(header).toContain("Sign in")
-    expect(header).not.toContain("/admin")
-    expect(header).not.toContain("Admin")
+    expect(header).toContain('"/admin"')
+    expect(header).toContain("Admin")
+    const primaryNav = header.slice(header.indexOf("primaryNav"), header.indexOf("as const"))
+    expect(primaryNav).not.toContain("Admin")
+    expect(primaryNav).not.toContain("/admin")
+    expect(publicLayout).toContain("getSession().catch(() => null)")
+    expect(publicLayout).toContain("Promise.all")
+    expect(publicLayout).toContain("signedIn={Boolean(session?.user)}")
+    const getSessionFn = read("lib/auth.ts").match(
+      /export async function getSession\(\) \{[\s\S]*?\n\}/,
+    )?.[0]
+    expect(getSessionFn).toBeTruthy()
+    expect(getSessionFn).not.toContain(".catch(")
+    expect(getSessionFn).not.toContain("try")
+    const adminLayout = read("app/admin/layout.tsx")
+    expect(adminLayout).toContain("await getSession()")
+    expect(adminLayout).not.toContain("getSession().catch")
     expect(footer).toContain('href="/privacy"')
     expect(footer).toContain("Privacy")
     expect(footer).toContain('href="/terms"')
@@ -179,7 +195,13 @@ describe("source invariants", () => {
     expect(read("app/(auth)/login/login-form.tsx")).toContain("passwordChangeRedirectUrl")
     expect(read("app/(auth)/login/page.tsx")).toContain("isResendConfigured")
     expect(read("app/(auth)/login/page.tsx")).toContain("magicLinkEnabled")
-    expect(read("app/(auth)/login/login-form.tsx")).toContain("magicLinkEnabled ? (")
+    expect(read("app/(auth)/login/login-form.tsx")).toMatch(
+      /magicLinkEnabled \? \(\s*<Button[\s\S]*Email me a sign-in link/,
+    )
+    expect(read("app/(auth)/login/login-form.tsx")).not.toMatch(
+      /footer=\{\s*magicLinkEnabled/,
+    )
+    expect(read("app/(auth)/login/login-form.tsx")).toContain('href="/forgot-password"')
     expect(read("app/(auth)/login/login-form.tsx")).toContain('from "@/lib/auth/callback-url-pure"')
     expect(read("lib/auth/callback-url-pure.ts")).toContain('value.includes("\\\\")')
     expect(read("lib/auth/callback-url-pure.ts")).toContain("value.startsWith(\"//\")")

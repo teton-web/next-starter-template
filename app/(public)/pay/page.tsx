@@ -1,12 +1,22 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { isEnabled } from "@/lib/flags/resolve"
 import { stripePayConfig, stripePayPageVisible } from "@/lib/stripe/config"
 
-export const metadata = { title: "Pay" }
+async function payRouteHidden() {
+  return !stripePayPageVisible(await isEnabled("stripe"), stripePayConfig())
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  if (await payRouteHidden()) {
+    notFound()
+  }
+  return { title: "Pay" }
+}
 
 export default async function PayPage() {
-  if (!stripePayPageVisible(await isEnabled("stripe"), stripePayConfig())) {
+  if (await payRouteHidden()) {
     notFound()
   }
 

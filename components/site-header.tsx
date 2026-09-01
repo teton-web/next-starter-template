@@ -10,9 +10,11 @@ const primaryNav = [
 ] as const
 
 export function SiteHeader({
+  signedIn = false,
   waitlistEnabled = false,
   galleriesEnabled = false,
 }: {
+  signedIn?: boolean
   waitlistEnabled?: boolean
   galleriesEnabled?: boolean
 }) {
@@ -26,32 +28,36 @@ export function SiteHeader({
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
-          <Link href="/" className="truncate font-semibold tracking-tight">
-            {name}
-          </Link>
-          <nav aria-label="Primary" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            {nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  item.href === "/"
-                    ? "hidden text-muted-foreground transition-colors hover:text-foreground sm:inline"
-                    : "text-muted-foreground transition-colors hover:text-foreground"
-                }
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
         <Link
-          href="/login"
-          className="shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          href="/"
+          className="mr-auto inline-flex h-9 min-w-0 items-center truncate font-semibold tracking-tight"
         >
-          Sign in
+          {name}
+        </Link>
+        <nav
+          aria-label="Primary"
+          className="order-last flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:order-none sm:w-auto"
+        >
+          {nav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={
+                item.href === "/"
+                  ? "hidden h-9 items-center text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                  : "inline-flex h-9 items-center text-muted-foreground transition-colors hover:text-foreground"
+              }
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <Link
+          href={signedIn ? "/admin" : "/login"}
+          className="inline-flex h-9 shrink-0 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {signedIn ? "Admin" : "Sign in"}
         </Link>
       </div>
     </header>

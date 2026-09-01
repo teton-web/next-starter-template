@@ -71,6 +71,13 @@ describe("Better Auth cutover", () => {
     expect(proxy).toContain("passwordChangeRequiredResponse")
   })
 
+  test("login forgot-password footer is not gated on magicLinkEnabled", () => {
+    const form = read("app/(auth)/login/login-form.tsx")
+    expect(form).toContain('href="/forgot-password"')
+    expect(form).not.toMatch(/footer=\{\s*magicLinkEnabled/)
+    expect(form).toMatch(/magicLinkEnabled \? \(\s*<Button[\s\S]*Email me a sign-in link/)
+  })
+
   test("providers no longer wrap SessionProvider", () => {
     const providers = read("components/providers.tsx")
     expect(providers).not.toContain("SessionProvider")

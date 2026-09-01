@@ -126,14 +126,16 @@ export function LoginForm({
       heading="Sign in"
       description="Sign in to access the admin panel"
       footer={
-        magicLinkEnabled ? (
-          <Link href="/forgot-password" className="text-primary hover:underline">
-            Forgot password?
-          </Link>
-        ) : null
+        <Link href="/forgot-password" className="text-primary hover:underline">
+          Forgot password?
+        </Link>
       }
     >
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form
+        onSubmit={handleLogin}
+        onInvalid={() => setError("")}
+        className="space-y-4"
+      >
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">
             Email
@@ -143,7 +145,10 @@ export function LoginForm({
             type="email"
             placeholder="admin@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setError("")
+            }}
             required
             disabled={busy}
           />
@@ -156,7 +161,10 @@ export function LoginForm({
             id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              setError("")
+            }}
             required
             disabled={busy}
           />

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 type GalleryItem = {
@@ -169,10 +170,31 @@ export function GalleryAlbumDetail({ albumId }: { albumId: string }) {
       </div>
 
       <div className="grid gap-3">
-        <Input value={draftTitle} onChange={(e) => setTitle(e.target.value)} />
-        <Input value={draftSlug} onChange={(e) => setSlug(e.target.value)} />
-        <Textarea value={draftDescription} onChange={(e) => setDescription(e.target.value)} />
-        <Input value={draftOrder} onChange={(e) => setSortOrder(e.target.value)} type="number" />
+        <div className="grid gap-2">
+          <Label htmlFor="album-title">Title</Label>
+          <Input id="album-title" value={draftTitle} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="album-slug">Slug</Label>
+          <Input id="album-slug" value={draftSlug} onChange={(e) => setSlug(e.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="album-description">Description</Label>
+          <Textarea
+            id="album-description"
+            value={draftDescription}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="album-sort-order">Sort order</Label>
+          <Input
+            id="album-sort-order"
+            value={draftOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            type="number"
+          />
+        </div>
         <select
           className="rounded-md border bg-background px-3 py-2 text-sm"
           value={draftCover}

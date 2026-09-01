@@ -64,7 +64,7 @@ export default async function CmsPreviewPage({ params }: Props) {
           <div className="space-y-1">
             <p className="text-sm font-medium">
               {unpublished ? "Unpublished preview" : "Preview"}
-              <span className="ml-2 font-normal text-muted-foreground">not indexed</span>
+              <span className="ml-2 font-normal text-muted-foreground"> · not indexed</span>
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{row.entry.status}</Badge>

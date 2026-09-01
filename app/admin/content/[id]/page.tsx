@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CmsRevisionList, type CmsRevisionListItem } from "@/components/admin/cms-revision-list"
+import { unionHeroMediaOption } from "@/lib/cms/hero-media-pure"
 import {
   datetimeLocalToUtcIso,
   utcToDatetimeLocalValue,
@@ -27,18 +28,30 @@ type Entry = {
   publishAt: string | Date | null
 }
 
+type MediaAsset = {
+  id: string
+  filename: string
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function EditCmsEntryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
+  const { data: mediaData } = useSWR("/api/admin/media?q=&kind=image", fetcher)
+  const listedAssets: MediaAsset[] = Array.isArray(mediaData?.assets) ? mediaData.assets : []
   const remote: Entry | null = data?.entry ?? null
   const revisions: CmsRevisionListItem[] = data?.revisions ?? []
   const scheduledPublishEnabled = data?.scheduledPublishEnabled === true
   const [draft, setDraft] = useState<Entry | null>(null)
   const [message, setMessage] = useState("")
   const entry = draft ?? remote
+  const mediaAssets = unionHeroMediaOption(
+    listedAssets,
+    entry?.heroMediaId,
+    data?.heroMedia ?? null,
+  )
 
   async function remove() {
     if (!entry) return
@@ -79,19 +92,60 @@ export default function EditCmsEntryPage() {
   return (
     <div className="container mx-auto max-w-3xl space-y-4 px-4 py-8">
       <h1 className="text-2xl font-bold">Edit {entry.routePath}</h1>
-      <Input value={entry.title} onChange={(e) => setDraft({ ...entry, title: e.target.value })} />
-      <Input value={entry.slug} onChange={(e) => setDraft({ ...entry, slug: e.target.value })} />
-      <Input
-        value={entry.excerpt ?? ""}
-        onChange={(e) => setDraft({ ...entry, excerpt: e.target.value })}
-        placeholder="Excerpt"
-      />
-      <Input
-        value={entry.heroMediaId ?? ""}
-        onChange={(e) => setDraft({ ...entry, heroMediaId: e.target.value || null })}
-        placeholder="Hero media asset id"
-      />
-      <Textarea rows={16} value={entry.body} onChange={(e) => setDraft({ ...entry, body: e.target.value })} />
+      <div className="space-y-2">
+        <Label htmlFor="cms-title">Title</Label>
+        <Input
+          id="cms-title"
+          value={entry.title}
+          onChange={(e) => setDraft({ ...entry, title: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-slug">Slug</Label>
+        <Input
+          id="cms-slug"
+          value={entry.slug}
+          onChange={(e) => setDraft({ ...entry, slug: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-excerpt">Excerpt</Label>
+        <Input
+          id="cms-excerpt"
+          value={entry.excerpt ?? ""}
+          onChange={(e) => setDraft({ ...entry, excerpt: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-hero">Hero</Label>
+        <select
+          id="cms-hero"
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          value={entry.heroMediaId ?? ""}
+          onChange={(e) => setDraft({ ...entry, heroMediaId: e.target.value || null })}
+        >
+          <option value="">No hero</option>
+          {mediaAssets.map((asset) => (
+            <option key={asset.id} value={asset.id}>
+              {asset.filename}
+            </option>
+          ))}
+        </select>
+        {typeof mediaData?.error === "string" && !Array.isArray(mediaData?.assets) ? (
+          <p className="text-sm text-muted-foreground">{mediaData.error}</p>
+        ) : Array.isArray(mediaData?.assets) && mediaData.assets.length === 0 && !entry.heroMediaId ? (
+          <p className="text-sm text-muted-foreground">Upload an image in Media first.</p>
+        ) : null}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-body">Body</Label>
+        <Textarea
+          id="cms-body"
+          rows={16}
+          value={entry.body}
+          onChange={(e) => setDraft({ ...entry, body: e.target.value })}
+        />
+      </div>
       {scheduledPublishEnabled ? (
         <div className="space-y-2">
           <Label htmlFor="cms-publish-at">Publish at</Label>

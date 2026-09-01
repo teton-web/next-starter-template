@@ -61,7 +61,11 @@ export function ForgotPasswordForm({ recoveryEnabled }: { recoveryEnabled: boole
             If an account with that email exists, we&apos;ve sent a password reset link.
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            onInvalid={() => setError("")}
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email
@@ -71,7 +75,10 @@ export function ForgotPasswordForm({ recoveryEnabled }: { recoveryEnabled: boole
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setError("")
+                }}
                 required
                 disabled={loading}
               />

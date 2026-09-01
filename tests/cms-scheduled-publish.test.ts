@@ -829,10 +829,10 @@ describe("PATCH /api/admin/cms/:id publishAt", () => {
   test("GET includes scheduledPublishEnabled true and false", async () => {
     const on = await getCmsEntryResponse(cmsRequest({}, "GET"), cmsContext, true)
     expect(on.status).toBe(200)
-    expect(await on.json()).toMatchObject({ scheduledPublishEnabled: true })
+    expect(await on.json()).toMatchObject({ scheduledPublishEnabled: true, heroMedia: null })
     const off = await getCmsEntryResponse(cmsRequest({}, "GET"), cmsContext, false)
     expect(off.status).toBe(200)
-    expect(await off.json()).toMatchObject({ scheduledPublishEnabled: false })
+    expect(await off.json()).toMatchObject({ scheduledPublishEnabled: false, heroMedia: null })
   })
 })
 

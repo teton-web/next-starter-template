@@ -43,6 +43,60 @@ describe("dashboard formatters", () => {
       }),
     ).toBe("login · system")
   })
+
+  test("formatAuditSummary omits user UUIDs only for self-events when actor email is present", () => {
+    expect(
+      formatAuditSummary({
+        action: "login",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("login · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "logout",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("logout · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "login",
+        entityType: "user",
+        entityId: "3be0c8e6-033d-4e1f-be5f-0e918c2a0118",
+        actorEmail: null,
+      }),
+    ).toBe("login user 3be0c8e6-033d-4e1f-be5f-0e918c2a0118 · system")
+  })
+
+  test("formatAuditSummary keeps target user ids for invite, update, and delete", () => {
+    expect(
+      formatAuditSummary({
+        action: "invite",
+        entityType: "user",
+        entityId: "target-user-1",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("invite user target-user-1 · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "update",
+        entityType: "user",
+        entityId: "target-user-2",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("update user target-user-2 · admin@example.com")
+    expect(
+      formatAuditSummary({
+        action: "delete",
+        entityType: "user",
+        entityId: "target-user-3",
+        actorEmail: "admin@example.com",
+      }),
+    ).toBe("delete user target-user-3 · admin@example.com")
+  })
 })
 
 describe("admin dashboard source", () => {

@@ -75,7 +75,11 @@ function ResetPasswordForm() {
           Password reset successfully. Redirecting to login…
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          onInvalid={() => setError("")}
+          className="space-y-4"
+        >
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
               New password
@@ -84,7 +88,10 @@ function ResetPasswordForm() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setError("")
+              }}
               required
               disabled={loading || !token}
               minLength={8}
@@ -98,7 +105,10 @@ function ResetPasswordForm() {
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                setError("")
+              }}
               required
               disabled={loading || !token}
               minLength={8}

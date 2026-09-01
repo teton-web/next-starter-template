@@ -63,6 +63,28 @@ describe("crop save mode", () => {
   })
 })
 
+describe("admin media library refresh", () => {
+  test("successful upload revalidates the SWR list", () => {
+    const page = read("app/admin/media/page.tsx")
+    expect(page).toContain("async function onUpload")
+    expect(page).toContain('setMessage(response.ok ? "Uploaded"')
+    expect(page).toContain("await mutate(")
+    expect(page).toContain("revalidate: true")
+    expect(page).toContain("cache: \"no-store\"")
+    expect(read("app/api/admin/media/route.ts")).toContain("asset: {")
+  })
+
+  test("revalidate does not treat a missing assets array as an empty library", () => {
+    const page = read("app/admin/media/page.tsx")
+    expect(page).toContain("!response.ok || !Array.isArray(body?.assets)")
+    expect(page).toContain("throw new Error")
+    expect(page).toContain("Array.isArray(data?.assets)")
+    expect(page).toContain("Array.isArray(current?.assets)")
+    expect(page).not.toContain("data?.assets ?? []")
+    expect(page).not.toContain("current?.assets ?? []")
+  })
+})
+
 describe("media crop source", () => {
   test("admin media crops images in-place via Route Handler and react-image-crop", () => {
     const page = read("app/admin/media/page.tsx")

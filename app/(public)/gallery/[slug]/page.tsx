@@ -8,14 +8,16 @@ import { getPublishedGalleryAlbumBySlug } from "@/lib/gallery/queries"
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (!(await isEnabled("galleries"))) return { title: "Gallery" }
+  if (!(await isEnabled("galleries"))) {
+    notFound()
+  }
   const { slug } = await params
   try {
     const album = await getPublishedGalleryAlbumBySlug(slug)
-    if (!album) return { title: "Gallery" }
+    if (!album) notFound()
     return { title: album.title, description: album.description ?? undefined }
   } catch {
-    return { title: "Gallery" }
+    notFound()
   }
 }
 

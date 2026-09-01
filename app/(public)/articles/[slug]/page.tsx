@@ -8,13 +8,17 @@ type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
+  let row: Awaited<ReturnType<typeof getPublishedEntryByPath>> | null = null
   try {
-    const row = await getPublishedEntryByPath(routeForEntry("article", slug))
-    if (!row) return { title: "Article" }
-    return { title: row.entry.title, description: row.entry.excerpt ?? undefined }
+    row = await getPublishedEntryByPath(routeForEntry("article", slug))
   } catch {
-    return { title: "Article" }
+    row = null
   }
+  if (!row) {
+    notFound()
+    return { title: "Page not found" }
+  }
+  return { title: row.entry.title, description: row.entry.excerpt ?? undefined }
 }
 
 export default async function ArticlePage({ params }: Props) {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { unionHeroMediaOption } from "@/lib/cms/hero-media-pure"
 import { isLivePublishedEntry } from "@/lib/cms/live-pure"
 import {
   cmsPreviewPath,
@@ -164,5 +165,51 @@ describe("unpublished CMS preview (source)", () => {
     expect(edit).toContain("cmsPreviewPath(entry.id)")
     expect(list).toContain("cmsPreviewPath(entry.id)")
     expect(edit).not.toContain("use server")
+  })
+
+  test("edit page pins the saved hero even when the library list omitted it", () => {
+    const edit = read("app/admin/content/[id]/page.tsx")
+    expect(edit).toContain("unionHeroMediaOption")
+    expect(edit).toContain("listedAssets")
+    expect(read("app/api/admin/cms/[id]/route.ts")).toContain("heroMedia")
+    expect(read("app/api/admin/cms/[id]/route.ts")).toContain("mediaAssets.filename")
+  })
+
+  test("admin content list distinguishes loading, error, and empty", () => {
+    const list = read("app/admin/content/page.tsx")
+    expect(list).toContain("!data")
+    expect(list).toContain("listError")
+    expect(list).toContain("data?.error")
+    expect(list).toContain("Loading…")
+    expect(list).toContain("No content yet. Create a draft with the form above.")
+    expect(list).toContain("Array.isArray(data?.entries)")
+  })
+
+  test("hero picker fetches images only and does not treat a missing assets array as empty", () => {
+    const edit = read("app/admin/content/[id]/page.tsx")
+    expect(edit).toContain("/api/admin/media?q=&kind=image")
+    expect(edit).not.toContain('useSWR("/api/admin/media?q=",')
+    expect(edit).toContain("unionHeroMediaOption")
+    expect(edit).toContain("Array.isArray(mediaData?.assets)")
+    expect(edit).toContain("Upload an image in Media first.")
+    expect(read("app/api/admin/media/route.ts")).toContain('kind === "image"')
+  })
+})
+
+describe("cms hero media options", () => {
+  test("unionHeroMediaOption prepends a missing saved hero and leaves listed assets unchanged", () => {
+    const listed = [
+      { id: "recent-1", filename: "recent-1.jpg" },
+      { id: "recent-2", filename: "recent-2.jpg" },
+    ]
+    expect(unionHeroMediaOption(listed, null)).toEqual(listed)
+    expect(unionHeroMediaOption(listed, "recent-1")).toEqual(listed)
+    expect(
+      unionHeroMediaOption(listed, "saved-hero", { id: "saved-hero", filename: "sunset.jpg" }),
+    ).toEqual([{ id: "saved-hero", filename: "sunset.jpg" }, ...listed])
+    expect(unionHeroMediaOption(listed, "saved-hero")).toEqual([
+      { id: "saved-hero", filename: "Current hero" },
+      ...listed,
+    ])
   })
 })

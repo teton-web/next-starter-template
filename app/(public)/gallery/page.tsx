@@ -1,9 +1,15 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { isEnabled } from "@/lib/flags/resolve"
 import { listPublishedGalleryAlbums } from "@/lib/gallery/queries"
 
-export const metadata = { title: "Gallery" }
+export async function generateMetadata(): Promise<Metadata> {
+  if (!(await isEnabled("galleries"))) {
+    notFound()
+  }
+  return { title: "Gallery" }
+}
 
 export default async function GalleryPage() {
   if (!(await isEnabled("galleries"))) {
