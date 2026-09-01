@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { isEnabled } from "@/lib/flags/resolve"
 import { WaitlistForm } from "./waitlist-form"
 
+export const metadata = { title: "Waitlist" }
+
 export default async function WaitlistPage() {
   if (!(await isEnabled("waitlist"))) {
     notFound()
