@@ -33,7 +33,9 @@ describe("parseJson", () => {
     const response = result as Response
     expect(response.status).toBe(422)
     const body = await response.json()
+    expect(typeof body.error).toBe("string")
     expect(body.error).toBeTruthy()
+    expect(String(body.error).startsWith("[")).toBe(false)
   })
 
   test("returns parsed data on valid bodies", async () => {

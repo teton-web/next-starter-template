@@ -52,7 +52,7 @@ async function maybeParseEmptyJson(request: Request) {
     const body = await request.json()
     const parsed = checkoutBodySchema.safeParse(body ?? {})
     if (!parsed.success) {
-      return jsonError(parsed.error.message, 422)
+      return jsonError(parsed.error.issues[0]?.message ?? "Invalid request", 422)
     }
     return true
   } catch {
