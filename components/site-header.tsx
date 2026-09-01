@@ -10,9 +10,11 @@ const primaryNav = [
 ] as const
 
 export function SiteHeader({
+  signedIn = false,
   waitlistEnabled = false,
   galleriesEnabled = false,
 }: {
+  signedIn?: boolean
   waitlistEnabled?: boolean
   galleriesEnabled?: boolean
 }) {
@@ -52,10 +54,10 @@ export function SiteHeader({
           ))}
         </nav>
         <Link
-          href="/login"
+          href={signedIn ? "/admin" : "/login"}
           className="inline-flex h-9 shrink-0 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          Sign in
+          {signedIn ? "Admin" : "Sign in"}
         </Link>
       </div>
     </header>
