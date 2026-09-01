@@ -79,19 +79,47 @@ export default function EditCmsEntryPage() {
   return (
     <div className="container mx-auto max-w-3xl space-y-4 px-4 py-8">
       <h1 className="text-2xl font-bold">Edit {entry.routePath}</h1>
-      <Input value={entry.title} onChange={(e) => setDraft({ ...entry, title: e.target.value })} />
-      <Input value={entry.slug} onChange={(e) => setDraft({ ...entry, slug: e.target.value })} />
-      <Input
-        value={entry.excerpt ?? ""}
-        onChange={(e) => setDraft({ ...entry, excerpt: e.target.value })}
-        placeholder="Excerpt"
-      />
-      <Input
-        value={entry.heroMediaId ?? ""}
-        onChange={(e) => setDraft({ ...entry, heroMediaId: e.target.value || null })}
-        placeholder="Hero media asset id"
-      />
-      <Textarea rows={16} value={entry.body} onChange={(e) => setDraft({ ...entry, body: e.target.value })} />
+      <div className="space-y-2">
+        <Label htmlFor="cms-title">Title</Label>
+        <Input
+          id="cms-title"
+          value={entry.title}
+          onChange={(e) => setDraft({ ...entry, title: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-slug">Slug</Label>
+        <Input
+          id="cms-slug"
+          value={entry.slug}
+          onChange={(e) => setDraft({ ...entry, slug: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-excerpt">Excerpt</Label>
+        <Input
+          id="cms-excerpt"
+          value={entry.excerpt ?? ""}
+          onChange={(e) => setDraft({ ...entry, excerpt: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-hero-media-id">Hero media asset id</Label>
+        <Input
+          id="cms-hero-media-id"
+          value={entry.heroMediaId ?? ""}
+          onChange={(e) => setDraft({ ...entry, heroMediaId: e.target.value || null })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="cms-body">Body</Label>
+        <Textarea
+          id="cms-body"
+          rows={16}
+          value={entry.body}
+          onChange={(e) => setDraft({ ...entry, body: e.target.value })}
+        />
+      </div>
       {scheduledPublishEnabled ? (
         <div className="space-y-2">
           <Label htmlFor="cms-publish-at">Publish at</Label>
