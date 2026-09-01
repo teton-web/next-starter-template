@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { unionHeroMediaOption } from "@/lib/cms/hero-media-pure"
 import { isLivePublishedEntry } from "@/lib/cms/live-pure"
 import {
   cmsPreviewPath,
@@ -164,5 +165,31 @@ describe("unpublished CMS preview (source)", () => {
     expect(edit).toContain("cmsPreviewPath(entry.id)")
     expect(list).toContain("cmsPreviewPath(entry.id)")
     expect(edit).not.toContain("use server")
+  })
+
+  test("edit page pins the saved hero even when the library list omitted it", () => {
+    const edit = read("app/admin/content/[id]/page.tsx")
+    expect(edit).toContain("unionHeroMediaOption")
+    expect(edit).toContain("listedAssets")
+    expect(read("app/api/admin/cms/[id]/route.ts")).toContain("heroMedia")
+    expect(read("app/api/admin/cms/[id]/route.ts")).toContain("mediaAssets.filename")
+  })
+})
+
+describe("cms hero media options", () => {
+  test("unionHeroMediaOption prepends a missing saved hero and leaves listed assets unchanged", () => {
+    const listed = [
+      { id: "recent-1", filename: "recent-1.jpg" },
+      { id: "recent-2", filename: "recent-2.jpg" },
+    ]
+    expect(unionHeroMediaOption(listed, null)).toEqual(listed)
+    expect(unionHeroMediaOption(listed, "recent-1")).toEqual(listed)
+    expect(
+      unionHeroMediaOption(listed, "saved-hero", { id: "saved-hero", filename: "sunset.jpg" }),
+    ).toEqual([{ id: "saved-hero", filename: "sunset.jpg" }, ...listed])
+    expect(unionHeroMediaOption(listed, "saved-hero")).toEqual([
+      { id: "saved-hero", filename: "Current hero" },
+      ...listed,
+    ])
   })
 })

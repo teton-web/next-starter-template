@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/lib/db"
-import { cmsEntries, cmsRevisions, mediaUsages, users } from "@/lib/db/schema"
+import { cmsEntries, cmsRevisions, mediaAssets, mediaUsages, users } from "@/lib/db/schema"
 import { jsonOk, requireCapabilityResponse, requireUserId } from "@/lib/api/helpers"
 import { errorResponse, HttpError } from "@/lib/api/http-error"
 import { auditClientMeta, writeAuditLog } from "@/lib/admin/audit"
@@ -56,6 +56,15 @@ export async function getCmsEntryResponse(
     const { id } = await context.params
     const [entry] = await db.select().from(cmsEntries).where(eq(cmsEntries.id, id)).limit(1)
     if (!entry) throw new HttpError(404, "Entry not found")
+    let heroMedia: { id: string; filename: string } | null = null
+    if (entry.heroMediaId) {
+      const [asset] = await db
+        .select({ id: mediaAssets.id, filename: mediaAssets.filename })
+        .from(mediaAssets)
+        .where(eq(mediaAssets.id, entry.heroMediaId))
+        .limit(1)
+      heroMedia = asset ?? { id: entry.heroMediaId, filename: "Current hero" }
+    }
     const revisions = await db
       .select({
         id: cmsRevisions.id,
@@ -72,6 +81,7 @@ export async function getCmsEntryResponse(
     return jsonOk({
       entry,
       revisions,
+      heroMedia,
       scheduledPublishEnabled: scheduledPublishEnabled ?? (await isEnabled("scheduled_publish")),
     })
   } catch (error) {

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CmsRevisionList, type CmsRevisionListItem } from "@/components/admin/cms-revision-list"
+import { unionHeroMediaOption } from "@/lib/cms/hero-media-pure"
 import {
   datetimeLocalToUtcIso,
   utcToDatetimeLocalValue,
@@ -39,13 +40,18 @@ export default function EditCmsEntryPage() {
   const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
   const { data: mediaData } = useSWR("/api/admin/media?q=", fetcher)
-  const mediaAssets: MediaAsset[] = mediaData?.assets ?? []
+  const listedAssets: MediaAsset[] = mediaData?.assets ?? []
   const remote: Entry | null = data?.entry ?? null
   const revisions: CmsRevisionListItem[] = data?.revisions ?? []
   const scheduledPublishEnabled = data?.scheduledPublishEnabled === true
   const [draft, setDraft] = useState<Entry | null>(null)
   const [message, setMessage] = useState("")
   const entry = draft ?? remote
+  const mediaAssets = unionHeroMediaOption(
+    listedAssets,
+    entry?.heroMediaId,
+    data?.heroMedia ?? null,
+  )
 
   async function remove() {
     if (!entry) return
@@ -125,7 +131,7 @@ export default function EditCmsEntryPage() {
             </option>
           ))}
         </select>
-        {mediaData && mediaAssets.length === 0 ? (
+        {mediaData && listedAssets.length === 0 && !entry.heroMediaId ? (
           <p className="text-sm text-muted-foreground">Upload a file in Media first.</p>
         ) : null}
       </div>

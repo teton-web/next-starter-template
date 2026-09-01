@@ -170,8 +170,10 @@ describe("POST /api/waitlist", () => {
 describe("waitlist source", () => {
   test("public page 404s when the flag is off and posts to the API when on", () => {
     const page = read("app/(public)/waitlist/page.tsx")
+    expect(page).toContain("generateMetadata")
     expect(page).toContain("notFound")
     expect(page).toContain('isEnabled("waitlist")')
+    expect(page).toContain('title: "Waitlist"')
     expect(read("app/(public)/waitlist/waitlist-form.tsx")).toContain("/api/waitlist")
     const route = read("app/api/waitlist/route.ts")
     expect(route).toContain("waitlistPostResponse")

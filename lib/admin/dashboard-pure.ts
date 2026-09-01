@@ -15,13 +15,18 @@ export function formatDashboardDate(value: Date | string): string {
   return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC")
 }
 
+const SELF_USER_AUDIT_ACTIONS = new Set(["login", "logout"])
+
 export function formatAuditSummary(log: {
   action: string
   entityType: string | null
   entityId: string | null
   actorEmail: string | null
 }): string {
-  const omitUserId = log.entityType === "user" && Boolean(log.actorEmail)
+  const omitUserId =
+    log.entityType === "user" &&
+    Boolean(log.actorEmail) &&
+    SELF_USER_AUDIT_ACTIONS.has(log.action)
   const entity = omitUserId
     ? ""
     : [log.entityType, log.entityId].filter(Boolean).join(" ")

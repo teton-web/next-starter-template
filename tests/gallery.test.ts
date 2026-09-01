@@ -136,9 +136,11 @@ describe("gallery source", () => {
   test("public routes 404 when the flag is off and drafts stay off the public slug", () => {
     const index = read("app/(public)/gallery/page.tsx")
     const detail = read("app/(public)/gallery/[slug]/page.tsx")
+    expect(index).toContain("generateMetadata")
     expect(index).toContain("notFound")
     expect(index).toContain('isEnabled("galleries")')
     expect(index).toContain("listPublishedGalleryAlbums")
+    expect(detail).toContain("generateMetadata")
     expect(detail).toContain("notFound")
     expect(detail).toContain('isEnabled("galleries")')
     expect(detail).toContain("getPublishedGalleryAlbumBySlug")
