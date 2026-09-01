@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { listPublishedEntries } from "@/lib/cms/queries"
 
 export const metadata = { title: "Articles" }
@@ -15,7 +16,17 @@ export default async function ArticlesPage() {
     <main className="mx-auto max-w-2xl px-4 py-16">
       <h1 className="text-3xl font-bold">Articles</h1>
       {articles.length === 0 ? (
-        <p className="mt-4 text-muted-foreground">No published articles yet.</p>
+        <>
+          <p className="mt-4 text-muted-foreground">No published articles yet.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/">Back to home</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/contact">Contact</Link>
+            </Button>
+          </div>
+        </>
       ) : (
         <ul className="mt-8 space-y-4">
           {articles.map((article) => (
