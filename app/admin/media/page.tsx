@@ -13,7 +13,7 @@ type Asset = MediaCropAsset & {
   canPurge: boolean
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
 
 export default function AdminMediaPage() {
   const [q, setQ] = useState("")
@@ -30,7 +30,16 @@ export default function AdminMediaPage() {
     setMessage(response.ok ? "Uploaded" : body.error || "Upload failed")
     if (response.ok) {
       event.currentTarget.reset()
-      await mutate()
+      const created = body.asset as Asset | undefined
+      await mutate(
+        (current: { assets?: Asset[] } | undefined) => {
+          if (!created) return current
+          const existing = current?.assets ?? []
+          if (existing.some((asset) => asset.id === created.id)) return current
+          return { ...current, assets: [created, ...existing] }
+        },
+        { revalidate: true },
+      )
     }
   }
 

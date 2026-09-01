@@ -147,7 +147,29 @@ export async function POST(request: NextRequest) {
     })
 
     trackEvent("media_upload", { kind: validated.value.kind })
-    return jsonOk({ id, url: persisted.stored.url, kind: validated.value.kind })
+    const life = mediaLifecycle({
+      archivedAt: null,
+      usageCount: 0,
+      untrackedUrlRefs: 0,
+    })
+    return jsonOk({
+      id,
+      url: persisted.stored.url,
+      kind: validated.value.kind,
+      asset: {
+        id,
+        filename: validated.value.safeFilename,
+        contentType: validated.value.contentType,
+        storageUrl: persisted.stored.url,
+        thumbnailUrl: persisted.thumbnailUrl,
+        altText,
+        kind: validated.value.kind,
+        width: persisted.width,
+        height: persisted.height,
+        archivedAt: null,
+        ...life,
+      },
+    })
   } catch (error) {
     return errorResponse(error)
   }
