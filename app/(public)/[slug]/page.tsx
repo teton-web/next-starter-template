@@ -9,13 +9,17 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (isReservedSlug(slug)) return {}
+  let row: Awaited<ReturnType<typeof getPublishedEntryByPath>> | null = null
   try {
-    const row = await getPublishedEntryByPath(routeForEntry("page", slug))
-    if (!row) return { title: "Page" }
-    return { title: row.entry.title, description: row.entry.excerpt ?? undefined }
+    row = await getPublishedEntryByPath(routeForEntry("page", slug))
   } catch {
-    return { title: "Page" }
+    row = null
   }
+  if (!row) {
+    notFound()
+    return { title: "Page not found" }
+  }
+  return { title: row.entry.title, description: row.entry.excerpt ?? undefined }
 }
 
 export default async function CmsPage({ params }: Props) {
