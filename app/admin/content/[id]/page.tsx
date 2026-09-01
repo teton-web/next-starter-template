@@ -27,12 +27,19 @@ type Entry = {
   publishAt: string | Date | null
 }
 
+type MediaAsset = {
+  id: string
+  filename: string
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function EditCmsEntryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
+  const { data: mediaData } = useSWR("/api/admin/media?q=", fetcher)
+  const mediaAssets: MediaAsset[] = mediaData?.assets ?? []
   const remote: Entry | null = data?.entry ?? null
   const revisions: CmsRevisionListItem[] = data?.revisions ?? []
   const scheduledPublishEnabled = data?.scheduledPublishEnabled === true
@@ -104,12 +111,23 @@ export default function EditCmsEntryPage() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="cms-hero-media-id">Hero media asset id</Label>
-        <Input
-          id="cms-hero-media-id"
+        <Label htmlFor="cms-hero">Hero</Label>
+        <select
+          id="cms-hero"
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           value={entry.heroMediaId ?? ""}
           onChange={(e) => setDraft({ ...entry, heroMediaId: e.target.value || null })}
-        />
+        >
+          <option value="">No hero</option>
+          {mediaAssets.map((asset) => (
+            <option key={asset.id} value={asset.id}>
+              {asset.filename}
+            </option>
+          ))}
+        </select>
+        {mediaData && mediaAssets.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Upload a file in Media first.</p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="cms-body">Body</Label>
