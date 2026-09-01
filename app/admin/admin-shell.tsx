@@ -36,8 +36,8 @@ export function AdminShell({
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
             <h1 className="text-2xl font-bold">Admin</h1>
             <Link href="/admin/content" className="text-sm hover:underline">Content</Link>
             <Link href="/admin/media" className="text-sm hover:underline">Media</Link>
@@ -66,7 +66,7 @@ export function AdminShell({
               </Button>
             </Link>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {session?.user && (
               <>
                 <span className="text-sm text-muted-foreground">{session.user.email}</span>
