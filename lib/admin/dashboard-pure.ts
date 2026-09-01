@@ -21,7 +21,10 @@ export function formatAuditSummary(log: {
   entityId: string | null
   actorEmail: string | null
 }): string {
-  const entity = [log.entityType, log.entityId].filter(Boolean).join(" ")
+  const omitUserId = log.entityType === "user" && Boolean(log.actorEmail)
+  const entity = omitUserId
+    ? ""
+    : [log.entityType, log.entityId].filter(Boolean).join(" ")
   const actor = log.actorEmail ?? "system"
   return entity ? `${log.action} ${entity} · ${actor}` : `${log.action} · ${actor}`
 }
