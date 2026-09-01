@@ -73,6 +73,16 @@ describe("admin media library refresh", () => {
     expect(page).toContain("cache: \"no-store\"")
     expect(read("app/api/admin/media/route.ts")).toContain("asset: {")
   })
+
+  test("revalidate does not treat a missing assets array as an empty library", () => {
+    const page = read("app/admin/media/page.tsx")
+    expect(page).toContain("!response.ok || !Array.isArray(body?.assets)")
+    expect(page).toContain("throw new Error")
+    expect(page).toContain("Array.isArray(data?.assets)")
+    expect(page).toContain("Array.isArray(current?.assets)")
+    expect(page).not.toContain("data?.assets ?? []")
+    expect(page).not.toContain("current?.assets ?? []")
+  })
 })
 
 describe("media crop source", () => {

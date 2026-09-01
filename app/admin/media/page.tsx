@@ -13,14 +13,21 @@ type Asset = MediaCropAsset & {
   canPurge: boolean
 }
 
-const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { cache: "no-store" })
+  const body = await response.json()
+  if (!response.ok || !Array.isArray(body?.assets)) {
+    throw new Error(typeof body?.error === "string" ? body.error : "Failed to load media")
+  }
+  return body
+}
 
 export default function AdminMediaPage() {
   const [q, setQ] = useState("")
   const [message, setMessage] = useState("")
   const [cropAsset, setCropAsset] = useState<Asset | null>(null)
   const { data, mutate } = useSWR(`/api/admin/media?q=${encodeURIComponent(q)}`, fetcher)
-  const assets: Asset[] = data?.assets ?? []
+  const assets: Asset[] = Array.isArray(data?.assets) ? data.assets : []
 
   async function onUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -34,7 +41,7 @@ export default function AdminMediaPage() {
       await mutate(
         (current: { assets?: Asset[] } | undefined) => {
           if (!created) return current
-          const existing = current?.assets ?? []
+          const existing = Array.isArray(current?.assets) ? current.assets : []
           if (existing.some((asset) => asset.id === created.id)) return current
           return { ...current, assets: [created, ...existing] }
         },
