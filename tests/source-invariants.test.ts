@@ -179,7 +179,13 @@ describe("source invariants", () => {
     expect(read("app/(auth)/login/login-form.tsx")).toContain("passwordChangeRedirectUrl")
     expect(read("app/(auth)/login/page.tsx")).toContain("isResendConfigured")
     expect(read("app/(auth)/login/page.tsx")).toContain("magicLinkEnabled")
-    expect(read("app/(auth)/login/login-form.tsx")).toContain("magicLinkEnabled ? (")
+    expect(read("app/(auth)/login/login-form.tsx")).toMatch(
+      /magicLinkEnabled \? \(\s*<Button[\s\S]*Email me a sign-in link/,
+    )
+    expect(read("app/(auth)/login/login-form.tsx")).not.toMatch(
+      /footer=\{\s*magicLinkEnabled/,
+    )
+    expect(read("app/(auth)/login/login-form.tsx")).toContain('href="/forgot-password"')
     expect(read("app/(auth)/login/login-form.tsx")).toContain('from "@/lib/auth/callback-url-pure"')
     expect(read("lib/auth/callback-url-pure.ts")).toContain('value.includes("\\\\")')
     expect(read("lib/auth/callback-url-pure.ts")).toContain("value.startsWith(\"//\")")
