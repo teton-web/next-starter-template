@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { siteName } from "@/lib/site-visibility"
 
 export default function Home() {
@@ -10,7 +10,7 @@ export default function Home() {
     <main className="flex items-center justify-center p-4 py-16">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-4xl">{name}</CardTitle>
+          <h1 className="text-4xl font-semibold leading-none">{name}</h1>
           <CardDescription className="text-lg">
             A Next.js starter with authentication, a CMS, and a public site ready to customize.
           </CardDescription>
