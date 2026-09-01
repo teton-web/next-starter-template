@@ -20,6 +20,12 @@ export default function Home() {
             Browse articles, send a message, or sign in if you operate this site.
           </p>
           <div className="flex flex-wrap gap-4 pt-2">
+            <Button asChild>
+              <Link href="/articles">Articles</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/contact">Contact</Link>
+            </Button>
             <Button variant="outline" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
