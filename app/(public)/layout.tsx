@@ -6,7 +6,7 @@ import { isEnabled } from "@/lib/flags/resolve"
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const [session, waitlistEnabled, galleriesEnabled] = await Promise.all([
-    getSession(),
+    getSession().catch(() => null),
     isEnabled("waitlist"),
     isEnabled("galleries"),
   ])

@@ -162,7 +162,18 @@ describe("source invariants", () => {
     const primaryNav = header.slice(header.indexOf("primaryNav"), header.indexOf("as const"))
     expect(primaryNav).not.toContain("Admin")
     expect(primaryNav).not.toContain("/admin")
-    expect(publicLayout).toContain("getSession")
+    expect(publicLayout).toContain("getSession().catch(() => null)")
+    expect(publicLayout).toContain("Promise.all")
+    expect(publicLayout).toContain("signedIn={Boolean(session?.user)}")
+    const getSessionFn = read("lib/auth.ts").match(
+      /export async function getSession\(\) \{[\s\S]*?\n\}/,
+    )?.[0]
+    expect(getSessionFn).toBeTruthy()
+    expect(getSessionFn).not.toContain(".catch(")
+    expect(getSessionFn).not.toContain("try")
+    const adminLayout = read("app/admin/layout.tsx")
+    expect(adminLayout).toContain("await getSession()")
+    expect(adminLayout).not.toContain("getSession().catch")
     expect(footer).toContain('href="/privacy"')
     expect(footer).toContain("Privacy")
     expect(footer).toContain('href="/terms"')
