@@ -1,9 +1,15 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { isEnabled } from "@/lib/flags/resolve"
 
-export const metadata = { title: "Payment canceled" }
+export async function generateMetadata(): Promise<Metadata> {
+  if (!(await isEnabled("stripe"))) {
+    notFound()
+  }
+  return { title: "Payment canceled" }
+}
 
 export default async function PayCancelPage() {
   if (!(await isEnabled("stripe"))) {
