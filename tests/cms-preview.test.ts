@@ -174,6 +174,26 @@ describe("unpublished CMS preview (source)", () => {
     expect(read("app/api/admin/cms/[id]/route.ts")).toContain("heroMedia")
     expect(read("app/api/admin/cms/[id]/route.ts")).toContain("mediaAssets.filename")
   })
+
+  test("admin content list distinguishes loading, error, and empty", () => {
+    const list = read("app/admin/content/page.tsx")
+    expect(list).toContain("!data")
+    expect(list).toContain("listError")
+    expect(list).toContain("data?.error")
+    expect(list).toContain("Loading…")
+    expect(list).toContain("No content yet. Create a draft with the form above.")
+    expect(list).toContain("Array.isArray(data?.entries)")
+  })
+
+  test("hero picker fetches images only and does not treat a missing assets array as empty", () => {
+    const edit = read("app/admin/content/[id]/page.tsx")
+    expect(edit).toContain("/api/admin/media?q=&kind=image")
+    expect(edit).not.toContain('useSWR("/api/admin/media?q=",')
+    expect(edit).toContain("unionHeroMediaOption")
+    expect(edit).toContain("Array.isArray(mediaData?.assets)")
+    expect(edit).toContain("Upload an image in Media first.")
+    expect(read("app/api/admin/media/route.ts")).toContain('kind === "image"')
+  })
 })
 
 describe("cms hero media options", () => {

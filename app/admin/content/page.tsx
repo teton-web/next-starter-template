@@ -22,7 +22,8 @@ export default function AdminContentPage() {
   const [title, setTitle] = useState("")
   const [entryType, setEntryType] = useState<"page" | "article">("page")
   const { data, mutate } = useSWR("/api/admin/cms", fetcher)
-  const entries: Entry[] = data?.entries ?? []
+  const entries: Entry[] = Array.isArray(data?.entries) ? data.entries : []
+  const listError = Boolean(data?.error) && !Array.isArray(data?.entries)
 
   async function createEntry(event: React.FormEvent) {
     event.preventDefault()
@@ -50,7 +51,13 @@ export default function AdminContentPage() {
         </select>
         <Button type="submit">Create draft</Button>
       </form>
-      {entries.length === 0 ? (
+      {!data ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : listError ? (
+        <p className="text-sm text-muted-foreground">
+          {typeof data.error === "string" ? data.error : "Unable to load content."}
+        </p>
+      ) : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No content yet. Create a draft with the form above.</p>
       ) : (
         <ul className="divide-y rounded-lg border">

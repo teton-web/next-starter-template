@@ -39,8 +39,8 @@ export default function EditCmsEntryPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { data, mutate } = useSWR(params.id ? `/api/admin/cms/${params.id}` : null, fetcher)
-  const { data: mediaData } = useSWR("/api/admin/media?q=", fetcher)
-  const listedAssets: MediaAsset[] = mediaData?.assets ?? []
+  const { data: mediaData } = useSWR("/api/admin/media?q=&kind=image", fetcher)
+  const listedAssets: MediaAsset[] = Array.isArray(mediaData?.assets) ? mediaData.assets : []
   const remote: Entry | null = data?.entry ?? null
   const revisions: CmsRevisionListItem[] = data?.revisions ?? []
   const scheduledPublishEnabled = data?.scheduledPublishEnabled === true
@@ -131,8 +131,10 @@ export default function EditCmsEntryPage() {
             </option>
           ))}
         </select>
-        {mediaData && listedAssets.length === 0 && !entry.heroMediaId ? (
-          <p className="text-sm text-muted-foreground">Upload a file in Media first.</p>
+        {typeof mediaData?.error === "string" && !Array.isArray(mediaData?.assets) ? (
+          <p className="text-sm text-muted-foreground">{mediaData.error}</p>
+        ) : Array.isArray(mediaData?.assets) && mediaData.assets.length === 0 && !entry.heroMediaId ? (
+          <p className="text-sm text-muted-foreground">Upload an image in Media first.</p>
         ) : null}
       </div>
       <div className="space-y-2">
