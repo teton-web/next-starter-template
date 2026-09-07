@@ -94,7 +94,7 @@ describe("source invariants", () => {
     expect(pkg.license).toBe("MIT")
     const license = read("LICENSE")
     expect(license).toContain("MIT License")
-    expect(license).toContain("David Solheim")
+    expect(license).toContain("Teton Web Ventures LLC")
   })
 
   test("seed script exists", () => {

@@ -2,7 +2,7 @@
 
 Do not open a public GitHub issue for vulnerabilities that could expose user data, credentials, or unauthenticated access.
 
-Use [GitHub private vulnerability reporting](https://github.com/davidsolheim/next-starter-template/security/advisories/new) on this repository.
+Use [GitHub private vulnerability reporting](https://github.com/teton-web/next-starter-template/security/advisories/new) on this repository.
 
 ## Secrets
 

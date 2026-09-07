@@ -2,7 +2,7 @@
 
 A production-ready Next.js starter with **Better Auth**, Neon/Drizzle **migrations only**, Doppler-oriented secrets, App Router hardening, and optional product surfaces behind `isEnabled`.
 
-**License:** [MIT](LICENSE) © David Solheim. Public template: [github.com/davidsolheim/next-starter-template](https://github.com/davidsolheim/next-starter-template). GitHub **About** and topics: Better Auth (`better-auth`), not Auth.js.
+**License:** [MIT](LICENSE) © Teton Web Ventures LLC. Public template: [github.com/teton-web/next-starter-template](https://github.com/teton-web/next-starter-template). GitHub **About** and topics: Better Auth (`better-auth`), not Auth.js.
 
 Design source: [Next Starter gold standard](docs/adr/0001-starter-boundaries.md) · platform boundaries: [ADR 0001](docs/adr/0001-starter-boundaries.md) · flags: [docs/FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md).
 
@@ -38,7 +38,7 @@ A clone that will become a **product** must run the first-run onboard in [`AGENT
 Use a **new** Doppler project named after the product slug. Do not reuse `next-starter-template` or another product’s Doppler/`DATABASE_URL`. Copy names from `.env.example`. See [docs/DOPPLER_ENV_SETUP.md](docs/DOPPLER_ENV_SETUP.md).
 
 ```bash
-git clone https://github.com/davidsolheim/next-starter-template.git <slug>
+git clone https://github.com/teton-web/next-starter-template.git <slug>
 cd <slug>
 bun install
 doppler setup --project <slug> --config development
@@ -58,7 +58,7 @@ bun run db:seed
 Work on **this** public template (package name `next-starter-template`) uses the starter Doppler project:
 
 ```bash
-git clone https://github.com/davidsolheim/next-starter-template.git
+git clone https://github.com/teton-web/next-starter-template.git
 cd next-starter-template
 bun install
 doppler setup --project next-starter-template --config development
@@ -139,7 +139,7 @@ PRs target **`origin/dev`**. GitHub **About** and topics stay Better Auth (`bett
 
 ## License
 
-[MIT](LICENSE) © David Solheim
+[MIT](LICENSE) © Teton Web Ventures LLC
 
 ## Security
 
