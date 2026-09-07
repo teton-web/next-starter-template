@@ -92,7 +92,7 @@
     "react-image-crop": "^11.1.2",
     "react-resizable-panels": "^4.12.3",
     "recharts": "3.10.1",
-    "resend": "6.24.0",
+    "resend": "6.26.0",
     "sanitize-html": "^2.17.4",
     "server-only": "^0.0.1",
     "sharp": "^0.35.4",
