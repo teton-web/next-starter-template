@@ -4,15 +4,15 @@
   "private": true,
   "license": "MIT",
   "description": "MIT-licensed Next.js starter: Better Auth, Neon/Drizzle, Doppler secrets, CMS, and media library.",
-  "author": "David Solheim",
+  "author": "Teton Web Ventures LLC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davidsolheim/next-starter-template.git"
+    "url": "git+https://github.com/teton-web/next-starter-template.git"
   },
   "bugs": {
-    "url": "https://github.com/davidsolheim/next-starter-template/issues"
+    "url": "https://github.com/teton-web/next-starter-template/issues"
   },
-  "homepage": "https://github.com/davidsolheim/next-starter-template#readme",
+  "homepage": "https://github.com/teton-web/next-starter-template#readme",
   "scripts": {
     "build": "next build",
     "build:doppler": "doppler run -- next build",

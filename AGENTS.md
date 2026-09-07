@@ -8,7 +8,7 @@ This file is two things: **platform rules** (keep forever) and a **first-run onb
 
 | This tree is… | What to do |
 |---------------|------------|
-| **Public template** — `package.json` `name` is `next-starter-template`, or `origin` is `davidsolheim/next-starter-template` | You are editing the **starter**. Do **not** run product onboard. Do **not** replace this file with a product AGENTS.md. Keep the first-run marker so clones still onboard. |
+| **Public template** — `package.json` `name` is `next-starter-template`, or `origin` is `teton-web/next-starter-template` (or the GitHub redirect `davidsolheim/next-starter-template`) | You are editing the **starter**. Do **not** run product onboard. Do **not** replace this file with a product AGENTS.md. Keep the first-run marker so clones still onboard. |
 | **A product clone** — any other package name, or `/start` just copied these files | If the first-run marker is still present: **onboard before any feature work**. |
 
 `/start` (user Grok skill) scaffolds a copy, then **must execute this first-run protocol** as its onboard phase. Do not invent a second questionnaire. If `/start` is run **inside an existing product clone**, it validates starter bones + `AGENTS.md` / `VISION.md` / `README.md` and repairs gaps — it does not copy the template over the tree.
@@ -99,7 +99,7 @@ Handlers + Zod, not Server Actions.
 - <routes or jobs a user can complete when V1 is real>
 ```
 
-**`README.md`**: product title + job; credit [next-starter-template](https://github.com/davidsolheim/next-starter-template) (MIT © David Solheim), no starter git history; stack bullets; install uses **this** slug (`git clone` this repo, `doppler setup --project <slug>`). Must not say `cd next-starter-template`. PRs target `origin/dev`.
+**`README.md`**: product title + job; credit [next-starter-template](https://github.com/teton-web/next-starter-template) (MIT © Teton Web Ventures LLC), no starter git history; stack bullets; install uses **this** slug (`git clone` this repo, `doppler setup --project <slug>`). Must not say `cd next-starter-template`. PRs target `origin/dev`.
 
 **`.linear-project`**: one line, Linear project name (usually the product name).
 
