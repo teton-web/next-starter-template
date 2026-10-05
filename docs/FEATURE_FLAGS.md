@@ -47,7 +47,7 @@ Catalog default is **off**. Local `dev` (`VERCEL_ENV` unset or `development`) is
 Preview/production enforce the gate when:
 
 - `isEnabled('site_gate')` is on (stored enabled **and** `passwordHash` present), or
-- leftover Doppler `SITE_GATE_PASSWORD` is set **and** no stored hash exists (clone pull: Bill Lax, MKFF, gateway-match, inventRight)
+- leftover Doppler `SITE_GATE_PASSWORD` is set **and** no stored hash exists (existing clones that still have the leftover env)
 
 Anonymous visitors do not need `ff_overrides`. Warm proxy overlay uses cookie/memory `hashPresent`; cold overlay fetches Node `GET /api/site-gate/public-state`. That fetch failing fail-closes (gate on) in preview/prod. Local `dev` stays ungated.
 

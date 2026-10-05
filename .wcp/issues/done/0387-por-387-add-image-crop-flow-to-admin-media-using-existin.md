@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: []
 linear_priority: "Medium"
 linear_parent: "POR-379"
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: none
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: Medium
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:09.092Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-387-add-image-crop-flow-to-admin-media-using-existing-react
+- Branch: por-387-add-image-crop-flow-to-admin-media-using-existing-react
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -78,7 +78,7 @@ After selecting an image asset, admin can crop, save a new derivative (or replac
 
 ## Out of scope / do not change
 
-* Video posters / Kectil gallery video thumbs
+* Video posters / the reference app gallery video thumbs
 * Changing Blob vs local driver policy
 
 ## Notes for implementer

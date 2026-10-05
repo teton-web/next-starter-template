@@ -4,6 +4,10 @@ import { join } from "node:path"
 import { sanitizeAnalyticsProps } from "@/lib/analytics"
 import { checkMemoryRateLimit, resetMemoryRateLimits } from "@/lib/services/rate-limit"
 
+// WCP public-ship: .github/workflows/ci.yml is absent from the public template (public-main)
+// WCP public-ship: .github/dependabot.yml updates bun only (public-main)
+// WCP public-ship: SECURITY.md documents local audit without a GitHub Actions workflow (public-main)
+
 const root = join(import.meta.dir, "..")
 
 function read(rel: string) {
@@ -17,33 +21,24 @@ describe("harvest invariants", () => {
     expect(pkg.packageManager).toContain("bun")
   })
 
-  test("CI runs bun audit after frozen install and Dependabot is additional", () => {
+  test("local audit stays high-only and the template ships no GitHub Actions", () => {
     const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> }
     expect(pkg.scripts.audit).toContain("bun audit")
     expect(pkg.scripts.audit).toContain("--audit-level=high")
     expect(pkg.scripts.audit).not.toContain("--ignore")
 
-    const ci = read(".github/workflows/ci.yml")
-    expect(ci).not.toMatch(/^\s*RESEND_API_KEY:/m)
-    expect(ci).not.toMatch(/^\s*EMAIL_FROM:/m)
-    expect(ci).not.toContain("db:push")
-    expect(ci).toContain("run: bun run audit")
-    expect(ci).not.toMatch(/bun run audit[^\n]*--ignore/)
+    expect(existsSync(join(root, ".github/workflows/ci.yml"))).toBe(false)
+    expect(existsSync(join(root, ".github/workflows"))).toBe(false)
 
-    const installIdx = ci.indexOf("bun install --frozen-lockfile")
-    const auditIdx = ci.indexOf("run: bun run audit")
-    expect(installIdx).toBeGreaterThan(-1)
-    expect(auditIdx).toBeGreaterThan(installIdx)
-
-    const auditStep = ci.match(/- name: Audit dependencies\n([\s\S]*?)(?=\n      - name:|\n*$)/)
-    expect(auditStep?.[1]).toContain("run: bun run audit")
-    expect(auditStep?.[1]).not.toContain("continue-on-error")
-    expect(auditStep?.[1]).not.toContain("--ignore")
+    const security = read("SECURITY.md")
+    expect(security).toContain("bun run audit")
+    expect(security).not.toContain("GitHub Actions")
+    expect(security).not.toContain("github-actions")
 
     expect(existsSync(join(root, ".github/dependabot.yml"))).toBe(true)
     const dependabot = read(".github/dependabot.yml")
     expect(dependabot).toMatch(/package-ecosystem:\s*bun/)
-    expect(dependabot).toMatch(/package-ecosystem:\s*github-actions/)
+    expect(dependabot).not.toMatch(/github-actions/)
     expect(dependabot).toMatch(/target-branch:\s*dev/)
     expect(dependabot).not.toMatch(/auto-?merge/i)
   })

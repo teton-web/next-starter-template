@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: ["Bug"]
 linear_priority: "High"
 linear_parent: ""
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: Bug
 - Parent: none
 - Priority: High
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:24.925Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-426-media-unused-crop-replace-overwrites-blob-pathname-cdn-hides
+- Branch: por-426-media-unused-crop-replace-overwrites-blob-pathname-cdn-hides
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 

@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+// WCP public-ship: .github/workflows/ci.yml is absent from the public template (public-main)
+
 const root = join(import.meta.dir, "..")
 
 function read(rel: string) {
@@ -59,20 +61,8 @@ describe("Playwright smoke wiring", () => {
     expect(gitignore).toContain("/playwright/.cache/")
   })
 
-  test("CI e2e job uses postgres, seed defaults, and does not set Resend", () => {
-    const ci = read(".github/workflows/ci.yml")
-    expect(ci).toMatch(/^  e2e:/m)
-    expect(ci).toContain("postgres:")
-    expect(ci).toContain("bunx drizzle-kit migrate")
-    expect(ci).toContain("bun scripts/seed-admin.ts")
-    expect(ci).toContain("playwright install --with-deps chromium")
-    expect(ci).toContain("bun run e2e")
-    expect(ci).toContain("SEED_ADMIN_EMAIL: admin@example.com")
-    expect(ci).toContain("SEED_ADMIN_PASSWORD: changeme-admin-password")
-    expect(ci).toContain("SEED_ADMIN_MUST_CHANGE_PASSWORD: \"false\"")
-    expect(ci).not.toMatch(/^\s*RESEND_API_KEY:/m)
-    expect(ci).not.toMatch(/^\s*EMAIL_FROM:/m)
-    expect(ci).not.toContain("continue-on-error")
-    expect(ci.toLowerCase()).not.toContain("skip e2e")
+  test("the template ships no GitHub Actions workflow", () => {
+    expect(existsSync(join(root, ".github/workflows/ci.yml"))).toBe(false)
+    expect(existsSync(join(root, ".github/workflows"))).toBe(false)
   })
 })

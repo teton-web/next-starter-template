@@ -8,7 +8,7 @@ This file is two things: **platform rules** (keep forever) and a **first-run onb
 
 | This tree is… | What to do |
 |---------------|------------|
-| **Public template** — `package.json` `name` is `next-starter-template`, or `origin` is `teton-web/next-starter-template` (or the GitHub redirect `davidsolheim/next-starter-template`) | You are editing the **starter**. Do **not** run product onboard. Do **not** replace this file with a product AGENTS.md. Keep the first-run marker so clones still onboard. |
+| **Public template** — `package.json` `name` is `next-starter-template`, or `origin` is `teton-web/next-starter-template` | You are editing the **starter**. Do **not** run product onboard. Do **not** replace this file with a product AGENTS.md. Keep the first-run marker so clones still onboard. |
 | **A product clone** — any other package name, or `/start` just copied these files | If the first-run marker is still present: **onboard before any feature work**. |
 
 `/start` (user Grok skill) scaffolds a copy, then **must execute this first-run protocol** as its onboard phase. Do not invent a second questionnaire. If `/start` is run **inside an existing product clone**, it validates starter bones + `AGENTS.md` / `VISION.md` / `README.md` and repairs gaps — it does not copy the template over the tree.
@@ -25,8 +25,8 @@ Prefill from the user’s message (including a `/start` brief and flags like `--
 
 Required:
 
-1. **Product name** — human title (`Customer Blacklist`)
-2. **Slug** — repo / Doppler / `package.json` name (`cblacklist-com`)
+1. **Product name** — human title (`Acme`)
+2. **Slug** — repo / Doppler / `package.json` name (`acme-com`)
 3. **Job** — one sentence: who it is for and what it does
 4. **V1** — 3–8 **user-visible** outcomes for the first ship (not “add Postgres”)
 5. **Later / non-goals** — what V1 must not include

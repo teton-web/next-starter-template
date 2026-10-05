@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: []
 linear_priority: "Medium"
 linear_parent: "POR-379"
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: none
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: Medium
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:11.741Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-389-add-waitlist-module-behind-waitlist-flag
+- Branch: por-389-add-waitlist-module-behind-waitlist-flag
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -59,7 +59,7 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 
 * Route / page / component / user flow: `/waitlist`, admin waitlist list, Resend optional
 * Parent epic: POR-379
-* Pattern sources: bass-clown; [designs.sh](<http://designs.sh>) is Vite and is not copied
+* Pattern sources: bass-clown; an internal site is Vite and is not copied
 
 ## Current behavior
 
@@ -82,7 +82,7 @@ Built dark. `isEnabled('waitlist')` gates nav, page, and APIs. Public form colle
 ## Out of scope / do not change
 
 * Marketing sequences / drip beyond one confirmation
-* [designs.sh](<http://designs.sh>) leaderboard
+* an internal site leaderboard
 
 ## Notes for implementer
 
@@ -93,4 +93,4 @@ Built dark. `isEnabled('waitlist')` gates nav, page, and APIs. Public form colle
 * Flag `waitlist` default off; proxy/nav/API all 404 or hidden when off
 * Resend confirmation is best-effort; insert commits first
 * Duplicate email: 200 + generic success, no enumeration
-* Do not copy [designs.sh](<http://designs.sh>) or bass-clown visual system; reuse starter form primitives
+* Do not copy an internal site or bass-clown visual system; reuse starter form primitives

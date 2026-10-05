@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: []
 linear_priority: "Low"
 linear_parent: "POR-379"
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: none
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: Low
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:17.455Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-394-add-optional-google-oauth-on-better-auth-behind-oauth-flag
+- Branch: por-394-add-optional-google-oauth-on-better-auth-behind-oauth-flag
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -84,7 +84,7 @@ GitHub provider is later, not this issue.
 ## Out of scope / do not change
 
 * GitHub OAuth
-* InventRight multi-tenant SSO
+* a client product multi-tenant SSO
 * Enabling public signup
 
 ## Notes for implementer

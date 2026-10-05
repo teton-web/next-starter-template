@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: ["Bug"]
 linear_priority: "High"
 linear_parent: "POR-379"
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: Bug
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: High
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:21.970Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-410-gallery-csp-blocks-vercel-blob-media-on-public-album-pages
+- Branch: por-410-gallery-csp-blocks-vercel-blob-media-on-public-album-pages
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -57,7 +57,7 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 
 ## Implementer contract
 
-* You are implementing **this ticket only** (not [POR-379](https://linear.app/teton-web-ventures/issue/POR-379/gold-standard-kit-flags-galleries-stripe-and-half-wired-finish), not [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets)). Do not expand scope.
+* You are implementing **this ticket only** (not [POR-379](https://linear.app/teton-web-ventures/issue/POR-379/gold-standard-kit-flags-galleries-stripe-and-half-wired-finish), not [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets)). Do not expand scope.
 * Prefer the **step-by-step plan** and **file-by-file changes** below over inventing a new design.
 * Before coding: run the **Drift check**. If anchors still match, do **not** re-research the whole area — implement.
 * If drift broke the plan (paths/symbols gone), stop and report; do not freestyle a rewrite.
@@ -113,7 +113,7 @@ Preview and production galleries store media on Vercel Blob (`BLOB_READ_WRITE_TO
 
 ## Suspected root cause / scope
 
-**Confirmed:** galleries ([POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets)) store Blob URLs and render them with raw tags, but document CSP was written for `'self'` + Vercel app/scripts hosts only. `next/image` `remotePatterns` already knew about Blob; CSP `img-src` / `media-src` were never updated. Same CSP also applies to CMS heroes (`components/cms-document.tsx`) and admin thumbs — fixing CSP unblocks those too; do not change those files here.
+**Confirmed:** galleries ([POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets)) store Blob URLs and render them with raw tags, but document CSP was written for `'self'` + Vercel app/scripts hosts only. `next/image` `remotePatterns` already knew about Blob; CSP `img-src` / `media-src` were never updated. Same CSP also applies to CMS heroes (`components/cms-document.tsx`) and admin thumbs — fixing CSP unblocks those too; do not change those files here.
 
 **CSP wildcard pitfall (must handle):** CSP `https://*.vercel-storage.com` matches **one** DNS label (`foo.vercel-storage.com`), not `abc.public.blob.vercel-storage.com`. Real `@vercel/blob` public URLs use the nested host. Allow **both**:
 
@@ -191,7 +191,7 @@ Leave this markup as-is. CSP must allow `item.src` / `item.thumbnailSrc` when th
 
 ### Pattern to mirror
 
-* **Mirror: **`/Users/davidsolheim/GitHub/cblacklist-com/next.config.mjs` (`DOCUMENT_SECURITY_HEADERS` img-src / media-src) **and **`cblacklist-com/tests/security-headers.test.ts` ~L24–25 — copy **only** the two Blob host tokens onto img-src and media-src, plus the two `toContain` asserts.
+* **Mirror: **`a-product-clone/next.config.mjs` (`DOCUMENT_SECURITY_HEADERS` img-src / media-src) **and **`a-product-clone/tests/security-headers.test.ts` ~L24–25 — copy **only** the two Blob host tokens onto img-src and media-src, plus the two `toContain` asserts.
 * **Why:** that clone already allowlisted Blob for raw `<img>`/`<video>`. Do **not** copy its leftover `'unsafe-eval'` (starter dropped it in [TW-1643](https://linear.app/teton-web-ventures/issue/TW-1643/starter-tighten-csp-remove-unsafe-eval); keep `expect(config).not.toContain("'unsafe-eval'")`).
 
 ## Step-by-step implementation plan
@@ -223,7 +223,7 @@ Recommended approach is **mandatory** unless drift proves the CSP strings moved.
 * Same-origin media proxy / rewrite
 * `script-src`, `'unsafe-eval'`, `connect-src`, `frame-src`, Permissions-Policy
 * CMS `components/cms-document.tsx`, admin media/gallery thumbs (same CSP will unblock them; do not convert those tags here)
-* Feature flag `galleries`, `proxy.ts`, [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets) album CRUD
+* Feature flag `galleries`, `proxy.ts`, [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets) album CRUD
 * No drive-by renames, dependency upgrades, or formatting-only sweeps
 
 ## Acceptance criteria
@@ -281,27 +281,27 @@ Re-verify these anchors; if they still match, **skip full re-investigation** and
 - [ ] `lib/storage/blob-driver.ts` `createBlobDriver` still returns `url: result.url` from `@vercel/blob`
 - [ ] `tests/security-headers.test.ts` still reads `next.config.mjs` and asserts `script-src` without `'unsafe-eval'`
 - [ ] `images.remotePatterns` still has `hostname: "**.vercel-storage.com"`
-- [ ] Mirror `cblacklist-com/next.config.mjs` still has both Blob hosts on img-src and media-src
+- [ ] Mirror `a-product-clone/next.config.mjs` still has both Blob hosts on img-src and media-src
 
 Snapshot: investigated at 2026-08-29, branch `dev`, HEAD hint `6e1518d`.
 
 ## Risks / blockers
 
 * Allowlisting only `https://*.vercel-storage.com` is a **false fix** — CSP `*` is one label; Blob URLs are `*.public.blob.vercel-storage.com`. Include both hosts.
-* Do not reintroduce `'unsafe-eval'` from the cblacklist mirror.
-* Related open ticket: [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets) (galleries, In Review) — compatible; this is the CSP follow-up, not a replacement.
+* Do not reintroduce `'unsafe-eval'` from the a-product-clone mirror.
+* Related open ticket: [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets) (galleries, In Review) — compatible; this is the CSP follow-up, not a replacement.
 * Rollback: revert the two CSP strings and the test asserts.
 
 ## Platform / stack
 
 * Canonical targets: Next.js 16 App Router, Vercel, Vercel Blob (`@vercel/blob`), Doppler env names only, document CSP in `next.config.mjs` `headers()`
-* Must not use / abandoned for this work: same-origin media proxy, `next/image` rewrite, Bill Lax galleries, ClickHouse/Convex
+* Must not use / abandoned for this work: same-origin media proxy, `next/image` rewrite, an existing clone galleries, ClickHouse/Convex
 * Migration dependency: none
 
 ## Related
 
 * Parent epic: [POR-379](https://linear.app/teton-web-ventures/issue/POR-379/gold-standard-kit-flags-galleries-stripe-and-half-wired-finish) Gold standard kit — flags, galleries, Stripe, and half-wired finish
-* Related: [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets) Add galleries from Kectil Alumni subset on media_assets
+* Related: [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets) Add galleries from the reference app subset on media_assets
 * blockedBy: none
 * Duplicate of: none — duplicates should not be filed
 
@@ -312,7 +312,7 @@ Snapshot: investigated at 2026-08-29, branch `dev`, HEAD hint `6e1518d`.
 ## Assumptions / pre-decided
 
 * **Mandatory approach:** extend document CSP. Do not proxy media same-origin. Do not convert gallery tags to `next/image`.
-* Include **both **`https://*.vercel-storage.com` and `https://*.public.blob.vercel-storage.com` on **both **`img-src` and `media-src` (cblacklist-com mirror; nested Blob host is the one that matches real `put()` URLs).
-* Keep starter `script-src` (no `'unsafe-eval'`) even though the cblacklist mirror still has `'unsafe-eval'`.
+* Include **both **`https://*.vercel-storage.com` and `https://*.public.blob.vercel-storage.com` on **both **`img-src` and `media-src` (a-product-clone mirror; nested Blob host is the one that matches real `put()` URLs).
+* Keep starter `script-src` (no `'unsafe-eval'`) even though the a-product-clone mirror still has `'unsafe-eval'`.
 * Same document CSP unblocks CMS heroes and admin thumbs; do not edit those files in this ticket.
-* Found by `/prb` Phase 1.5 thoroughness of `origin/main...dev` on the [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets) gallery ship; file as a [POR-379](https://linear.app/teton-web-ventures/issue/POR-379/gold-standard-kit-flags-galleries-stripe-and-half-wired-finish) child, relatedTo [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets), do not reopen [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets) for this fix.
+* Found by `/prb` Phase 1.5 thoroughness of `origin/main...dev` on the [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets) gallery ship; file as a [POR-379](https://linear.app/teton-web-ventures/issue/POR-379/gold-standard-kit-flags-galleries-stripe-and-half-wired-finish) child, relatedTo [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets), do not reopen [POR-390](https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets) for this fix.

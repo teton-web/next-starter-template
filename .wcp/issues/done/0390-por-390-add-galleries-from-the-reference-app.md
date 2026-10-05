@@ -1,6 +1,6 @@
 ---
 id: "0390"
-title: "Add galleries from Kectil Alumni subset on media_assets"
+title: "Add galleries from the reference app subset on media_assets"
 status: done
 priority: high
 assignee:
@@ -12,12 +12,12 @@ commit:
 reason:
 created: "2026-08-28T19:00:59.981Z"
 linear_id: "POR-390"
-linear_url: "https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets"
+linear_url: "https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets"
 linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: []
 linear_priority: "High"
 linear_parent: "POR-379"
@@ -32,12 +32,12 @@ notion_url:
 ## Linear import
 
 - Identifier: POR-390
-- URL: https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-kectil-alumni-subset-on-media-assets
+- URL: https://linear.app/teton-web-ventures/issue/POR-390/add-galleries-from-reference-app-subset-on-media-assets
 - Linear status: Done (completed)
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: none
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: High
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:12.673Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-390-add-galleries-from-kectil-alumni-subset-on-media_assets
+- Branch: por-390-add-galleries-from-reference-app-subset-on-media_assets
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -59,16 +59,16 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 
 * Route / page / component / user flow: `/gallery`, `/gallery/[slug]`, `/admin/media/gallery`, `/admin/media/gallery/[albumId]`
 * Parent epic: POR-379
-* Source of truth: teton-web/kectil-alumni @ db9ab9ae (`lib/db/schema/gallery-albums.ts`, `drizzle/0014_gallery_albums.sql`, publish promote KEC-655 in `lib/gallery/mutations.ts`)
-* Bill Lax is a consumer, not the model
+* Source of truth: the reference app @ db9ab9ae (`lib/db/schema/gallery-albums.ts`, `drizzle/0014_gallery_albums.sql`, publish promote the reference publish change in `lib/gallery/mutations.ts`)
+* an existing clone is a consumer, not the model
 
 ## Current behavior
 
-Starter has `media_assets` + usages. No albums. Bill Lax already invented `galleries` + `gallery_photos` on assets. Do not invent a third model.
+Starter has `media_assets` + usages. No albums. an existing clone already invented `galleries` + `gallery_photos` on assets. Do not invent a third model.
 
 ## Expected / intended behavior
 
-Kectil contract, mapped onto starter `media_assets` (do not add Kectil `media_items` unless captions/year/category are required later).
+the reference app contract, mapped onto starter `media_assets` (do not add the reference app `media_items` unless captions/year/category are required later).
 
 Ship:
 
@@ -92,24 +92,24 @@ Ship:
 - [ ] Duplicate asset in one album rejected
 - [ ] Empty published album shows empty state, not 404
 - [ ] Audit on create/update/publish/delete
-- [ ] Verification: `bun run typecheck`; sitemap omits drafts; compare behavior to Kectil public published-only rule
+- [ ] Verification: `bun run typecheck`; sitemap omits drafts; compare behavior to the reference app public published-only rule
 
 ## Out of scope / do not change
 
-* Intake importer, starter fallback albums, video-poster special case, CMS `galleryAlbumId`, year/location/conference taxonomy, Ghana merge helper
-* Copying Bill Lax `sourceKey` unless needed for a later import
+* Intake importer, starter fallback albums, video-poster special case, CMS `galleryAlbumId`, year/location/conference taxonomy, region merge helper
+* Copying an existing clone `sourceKey` unless needed for a later import
 
 ## Notes for implementer
 
-Copy contract from teton-web/kectil-alumni @ db9ab9ae, remap `media_items` → starter `media_assets`:
+Copy contract from the reference app @ db9ab9ae, remap `media_items` → starter `media_assets`:
 
 * `lib/db/schema/gallery-albums.ts` + `gallery-album-items.ts`
 * Queries/presenters/mutations under `lib/gallery/` (published-only public fetch)
 * Public: `app/(site)/gallery/page.tsx`, `app/(site)/gallery/[slug]/page.tsx`
 * Admin: `app/admin/media/gallery/` list + `[albumId]`
-* Publish promote: only if storage is private; starter Blob is public so keep status gate and skip KEC-655 promote unless a private driver appears
+* Publish promote: only if storage is private; starter Blob is public so keep status gate and skip the reference publish change promote unless a private driver appears
 * Sitemap + `lib/cache/public-cache.ts` tag only published slugs
 * Attach existing library assets; upload into album reuses `/api/upload` + MIME allowlist + presign PUT for large files
 * Flag `galleries` gates proxy, nav, routes, APIs. Schema may exist while UI is dark
 
-Do not invent Bill Lax `galleries` + `gallery_photos`. No year/conference taxonomy, no Ghana merge, no CMS `galleryAlbumId` in this slice.
+Do not invent an existing clone `galleries` + `gallery_photos`. No year/conference taxonomy, no region merge, no CMS `galleryAlbumId` in this slice.

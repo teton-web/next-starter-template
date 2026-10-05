@@ -116,7 +116,7 @@ describe("gallery publish promote", () => {
 })
 
 describe("gallery source", () => {
-  test("does not invent Bill Lax galleries/gallery_photos tables", () => {
+  test("does not invent a separate galleries or gallery_photos schema", () => {
     const schemaDir = join(root, "lib/db/schema")
     const files = readdirSync(schemaDir)
     expect(files).toContain("gallery-albums.ts")

@@ -17,7 +17,7 @@ linear_status: "Done"
 linear_status_type: "completed"
 linear_team: "POR"
 linear_project: "next-starter-template"
-linear_assignee: "David Solheim <david@tetonweb.com>"
+linear_assignee: "maintainer"
 linear_labels: []
 linear_priority: "High"
 linear_parent: "POR-379"
@@ -37,7 +37,7 @@ notion_url:
 - Queue status: done
 - Team: Portfolio (POR)
 - Project: next-starter-template
-- Assignee: David Solheim <david@tetonweb.com>
+- Assignee: maintainer
 - Labels: none
 - Parent: POR-379 — Gold standard kit — flags, galleries, Stripe, and half-wired finish
 - Priority: High
@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-30T02:08:05.986Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-383-convert-site-gate-to-flag-hashed-password-on-adminfeatures
+- Branch: por-383-convert-site-gate-to-flag-hashed-password-on-adminfeatures
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -70,7 +70,7 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 * Gate is `isEnabled('site_gate')` AND a password hash exists
 * Password entered on `/admin/features` site_gate row, hashed at rest, never shown again
 * Signing secret for the cookie stays in Doppler (`AUTH_SECRET` or dedicated). Do not HMAC with the typed password once it lives in DB
-* New catalog default is OFF. Existing clones (Bill Lax, MKFF, gateway-match, inventright) must not go public on pull — document a one-time migration: enable flag + set password (or temporarily keep reading `SITE_GATE_PASSWORD` if flag row empty)
+* New catalog default is OFF. Existing clones (existing clones) must not go public on pull — document a one-time migration: enable flag + set password (or temporarily keep reading `SITE_GATE_PASSWORD` if flag row empty)
 * Local `dev` stays ungated
 * `/api/health` and static assets stay exempt
 
@@ -98,7 +98,7 @@ Touch:
 * `/site-gate` page + `/api/site-gate` — compare against hash from flag `config`, not env plaintext
 * `/admin/features` site_gate row (POR-381) — password set/rotate; empty means gate stays dark
 * `.env.example` — retire `SITE_GATE_PASSWORD` as source of truth; document signing secret + clone migration
-* Existing clones (Bill Lax, MKFF, gateway-match, inventright): one-time note — enable flag + set password, or temporarily read leftover `SITE_GATE_PASSWORD` only when the flag row has no hash so a pull does not go public
+* Existing clones (existing clones): one-time note — enable flag + set password, or temporarily read leftover `SITE_GATE_PASSWORD` only when the flag row has no hash so a pull does not go public
 
 Exemptions stay: `/api/health`, static assets, auth routes as today. Local `VERCEL_ENV`/dev remains ungated.
 

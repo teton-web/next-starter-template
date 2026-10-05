@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-08-31T18:00:06.277Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-379-gold-standard-kit-flags-galleries-stripe-and-half-wired
+- Branch: por-379-gold-standard-kit-flags-galleries-stripe-and-half-wired
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -57,9 +57,9 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 
 ## Context
 
-* Repo: [davidsolheim/next-starter-template](<https://github.com/davidsolheim/next-starter-template>) (`main` `417f717`)
+* Repo: [teton-web/next-starter-template](<https://github.com/teton-web/next-starter-template>) (`main` `417f717`)
 * Design source: [Next Starter gold standard — inventory, gaps, flags](<docs/adr/0001-starter-boundaries.md>)
-* Gallery source of truth: [teton-web/kectil-alumni](<https://github.com/teton-web/kectil-alumni>) (`db9ab9ae`)
+* Gallery source of truth: the reference app (`db9ab9ae`)
 * Team: Portfolio (`POR`)
 
 Parent for the gold-standard kit work. Implement **leaf children**, not this shell.
@@ -78,7 +78,7 @@ Unused features stay built and dark. Toggle in `/admin/features`. Doppler `FEATU
 2. Convert site gate to flag + password-on-row
 3. Wire half-built pieces (invite/welcome, restore, trackEvent, crop, unpublished preview)
 4. `publish_at` + cron worker as one slice
-5. Galleries (Kectil subset on `media_assets`)
+5. Galleries (the reference app subset on `media_assets`)
 6. Waitlist
 7. Stripe simple pay + webhook + ADR 0001 rewrite
 8. Optional Google OAuth
@@ -92,7 +92,7 @@ No `rbac` / `theme` / `analytics` flags.
 
 ## Out of scope / do not change
 
-* InventRight CRM/Keap/Studio/xAI, dts-os skins, puppy poll, BBQ check-in, Payload shops, Shopify, [designs.sh](<http://designs.sh>)
+* a client product CRM/Keap/Studio/xAI, an internal app skins, puppy poll, BBQ check-in, Payload shops, Shopify, an internal site
 * i18n URL prefixes, BotID, BlockNote, full product catalog, subscriptions, impersonation
 * Deleting unused orgs/notifications/files tables
 
@@ -104,7 +104,7 @@ High
 * POR-381 `/admin/features` UI
 * POR-382 proxy-safe flag cache
 * POR-383 site gate → flag + hashed password
-* POR-390 galleries (Kectil subset on `media_assets`)
+* POR-390 galleries (the reference app subset on `media_assets`)
 
 Medium
 

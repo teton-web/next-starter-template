@@ -115,7 +115,7 @@ bun run db:migrate
 bun run db:seed
 ```
 
-`bun run audit` is `bun audit --audit-level=high` (Bun 1.3: fail CI on high/critical only). See [SECURITY.md](SECURITY.md).
+`bun run audit` is `bun audit --audit-level=high` (Bun 1.3: high and critical only). See [SECURITY.md](SECURITY.md).
 
 ## Feature flags
 
@@ -125,13 +125,13 @@ Enable only what the clone needs on `/admin/features`. Full rules: [docs/FEATURE
 
 ## Deployment
 
-Import the repo in Vercel, sync Doppler configs to Preview/Production, run `db:migrate` against those databases, then deploy. Do not set `RESEND_API_KEY` in CI stubs — that enables the email provider at build time.
+Import the repo in Vercel, sync Doppler configs to Preview/Production, run `db:migrate` against those databases, then deploy. Leave `RESEND_API_KEY` unset unless the app sends mail. Setting it enables the email provider at build time.
 
 ## Site gate (clones)
 
 The gate is **off** by default. Preview/production turn it on only when the `site_gate` flag is on **and** a password is stored (scrypt `passwordHash` on `/admin/features`). HMAC cookies use `AUTH_SECRET` or `SITE_GATE_SIGNING_SECRET`, not the typed password. `/api/health` stays public. Local `dev` stays ungated.
 
-Existing clones (**Bill Lax**, **MKFF**, **gateway-match**, **inventRight**) that still have Doppler `SITE_GATE_PASSWORD` must not go public on pull: leftover env is used **only** while the flag row has no hash. Before or with the pull: enable `site_gate` and set a password in `/admin/features`, then remove `SITE_GATE_PASSWORD` from Doppler. After that, preview/prod gating for anonymous visitors comes from `GET /api/site-gate/public-state`, not leftover env and not an admin cookie.
+For existing clones that still have Doppler `SITE_GATE_PASSWORD`, the site stays gated on pull: leftover env is used **only** while the flag row has no hash. Before or with the pull: enable `site_gate` and set a password in `/admin/features`, then remove `SITE_GATE_PASSWORD` from Doppler. After that, preview/prod gating for anonymous visitors comes from `GET /api/site-gate/public-state`, not leftover env and not an admin cookie.
 
 ## Work tracking
 

@@ -196,6 +196,6 @@ describe("waitlist source", () => {
     const page = read("app/admin/waitlist/page.tsx")
     expect(page).toContain('checkCapability(session.user.id, "admin")')
     expect(page).toContain("listWaitlistEntries")
-    expect(page).not.toContain("designs.sh")
+    expect(page).not.toMatch(/https?:\/\//)
   })
 })

@@ -49,7 +49,7 @@ notion_url:
 - Completed: 2026-09-02T13:38:28.807Z
 - Canceled: no
 - Archived: no
-- Branch: david/por-461-ui-walk-next-starter-template-2026-08-31
+- Branch: por-461-ui-walk-next-starter-template-2026-08-31
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 

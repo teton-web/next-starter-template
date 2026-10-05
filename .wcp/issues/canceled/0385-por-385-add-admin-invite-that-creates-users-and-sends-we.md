@@ -49,7 +49,7 @@ notion_url:
 - Completed: no
 - Canceled: 2026-08-28T20:09:46.538Z
 - Archived: no
-- Branch: david/por-385-add-admin-invite-that-creates-users-and-sends-welcometsx
+- Branch: por-385-add-admin-invite-that-creates-users-and-sends-welcometsx
 
 Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage, and Backlog are `open` so the import does not take a ticket lease or start a review. Done, Canceled, and Blocked use those folders. `linear_status` is the Linear status at import.
 
@@ -88,7 +88,7 @@ Admin with `admin` capability invites by email + capability (`admin` or `moderat
 
 * Public member signup
 * OAuth
-* InventRight impersonation / third roles
+* a client product impersonation / third roles
 
 ## Notes for implementer
 

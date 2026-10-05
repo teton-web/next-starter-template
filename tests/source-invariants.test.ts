@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { OPTIONAL_FLAG_KEYS } from "@/lib/flags/catalog"
+
+// WCP public-ship: README.md drops personal clone names (public-main)
+// WCP public-ship: AGENTS.md identifies the template without a personal GitHub account (public-main)
+// WCP public-ship: .env.example drops personal clone names (public-main)
+// WCP public-ship: docs/FEATURE_FLAGS.md drops personal clone names (public-main)
 
 const root = join(import.meta.dir, "..")
 
@@ -82,11 +87,48 @@ describe("source invariants", () => {
     expect(read("app/sitemap.ts")).toContain("listPublishedEntries")
   })
 
-  test("hardcoded personal admin email is gone", () => {
+  test("tracked text has no home directories or non-example emails", () => {
+    const files: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === "node_modules" || entry.name === "public" || entry.name === "screenshots") continue
+        if (entry.name.startsWith(".") && entry.name !== ".github" && entry.name !== ".wcp") continue
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          if (entry.name === ".wcp") {
+            walk(join(full, "issues"))
+            continue
+          }
+          walk(full)
+          continue
+        }
+        if (/\.(md|ts|tsx|js|yml|yaml|json|example|toml)$/.test(entry.name)) files.push(full)
+      }
+    }
+    walk(root)
+    expect(files.length).toBeGreaterThan(10)
+    const home = /\/Users\/[A-Za-z0-9._-]+\//
+    const mail = /[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g
+    for (const file of files) {
+      const source = readFileSync(file, "utf8")
+      expect(home.test(source)).toBe(false)
+      for (const match of source.matchAll(mail)) {
+        const domain = match[1].toLowerCase()
+        const allowed = domain === "example.com" || domain === "b.com" || domain.endsWith(".neon.tech")
+        expect(allowed).toBe(true)
+      }
+    }
+  })
+
+  test("forgot-password copy uses example.com addresses only", () => {
     const forgot = read("app/(auth)/forgot-password/page.tsx")
     const forgotForm = read("app/(auth)/forgot-password/forgot-password-form.tsx")
-    expect(forgot).not.toContain("admin@davidsolheim.com")
-    expect(forgotForm).not.toContain("admin@davidsolheim.com")
+    expect(forgotForm).toContain("you@example.com")
+    const emails = `${forgot}\n${forgotForm}`.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? []
+    expect(emails.length).toBeGreaterThan(0)
+    for (const email of emails) {
+      expect(email.endsWith("@example.com")).toBe(true)
+    }
   })
 
   test("package is MIT licensed with a LICENSE file", () => {
@@ -362,7 +404,6 @@ describe("source invariants", () => {
     const readme = read("README.md")
     const agents = read("AGENTS.md")
     const pkg = JSON.parse(read("package.json")) as { description?: string }
-    const ci = read(".github/workflows/ci.yml")
     const clonePath = markdownSection(readme, "### Clone path (new product)")
     const maintainers = markdownSection(readme, "### This template (maintainers)")
 
@@ -385,10 +426,10 @@ describe("source invariants", () => {
     expect(readme).toContain("`origin/dev`")
     expect(readme).not.toMatch(/origin\/development/)
     expect(readme).toContain("site_gate")
-    expect(readme).toContain("Bill Lax")
+    expect(readme).toContain("existing clones")
     expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
     expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
-    expect(readme).toContain("Do not set `RESEND_API_KEY` in CI stubs")
+    expect(readme).toContain("Leave `RESEND_API_KEY` unset unless the app sends mail")
     // WCP notion-tracker: README.md work tracking section points at Notion (notion-not-linear)
     expect(readme).toContain("Track work in Notion")
     expect(readme).toContain("Do not create Linear issues")
@@ -415,8 +456,10 @@ describe("source invariants", () => {
     expect(agents).toContain("not UI-off")
     expect(agents).toContain("Better Auth")
     expect(agents).not.toContain("Auth.js")
-
-    expect(ci).not.toMatch(/^\s*RESEND_API_KEY:/m)
+    expect(agents).toContain("`teton-web/next-starter-template`")
+    expect(agents).not.toContain("GitHub redirect")
+    expect(agents).toContain("`Acme`")
+    expect(agents).toContain("`acme-com`")
   })
 
   test("admin users API exists, requires admin capability, and has no public register", () => {
