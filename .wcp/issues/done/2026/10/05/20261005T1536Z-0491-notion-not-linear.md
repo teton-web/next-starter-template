@@ -1,9 +1,9 @@
 ---
 id: 0491
 title: Point starter onboard and README at Notion instead of Linear
-status: in-review
+status: done
 priority: high
-assignee: notion-tracker
+assignee:
 lease_expires:
 scope: AGENTS.md, README.md, and tests/source-invariants.test.ts. The /start skill copies the same Notion rules so a clone is not told to create a Linear project.
 acceptance: The first-run onboard and the onboarded AGENTS.md shape tell a clone to track work in Notion. They do not ask for a Linear team, do not write .linear-project, do not keep a Linear section, and do not tell a clone to keep a Linear URL. README states the same rule. source-invariants expects ## Notion on both the template and a product clone.
@@ -12,7 +12,7 @@ files:
   - README.md
   - tests/source-invariants.test.ts
   - .gitignore
-commit:
+commit: a89d29e8be3930564b376afaf4346cc32dceff11
 pr:
 reason:
 created: 2026-10-05T15:36:45Z
