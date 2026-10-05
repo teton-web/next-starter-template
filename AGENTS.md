@@ -17,11 +17,11 @@ This file is two things: **platform rules** (keep forever) and a **first-run onb
 
 ## First-run onboard (product clones only)
 
-**Stop** implementing features, filing Linear issues, committing product UI, or deploying until this file no longer contains `first-run: starter-onboard` and `VISION.md` exists.
+**Stop** implementing features, creating Linear issues, committing product UI, or deploying until this file no longer contains `first-run: starter-onboard` and `VISION.md` exists.
 
 ### 1. Collect answers
 
-Prefill from the user’s message (including a `/start` brief and flags like `--slug`, `--team`). **Do not re-ask** fields they already gave. Show inferred values in one short list, then ask **only the gaps** in **one** message.
+Prefill from the user’s message (including a `/start` brief and flags like `--slug`). **Do not re-ask** fields they already gave. Show inferred values in one short list, then ask **only the gaps** in **one** message. Ignore `--team`. It is not a tracker.
 
 Required:
 
@@ -30,13 +30,13 @@ Required:
 3. **Job** — one sentence: who it is for and what it does
 4. **V1** — 3–8 **user-visible** outcomes for the first ship (not “add Postgres”)
 5. **Later / non-goals** — what V1 must not include
-6. **Linear team** — `Teton Web` (default for new Teton products) / `inventRight` / `Kectil` / other exact team name
+6. **Notion home** — project page URL if one already exists. If none, record `pending`. The issues database title is the slug and its description is the origin URL.
 7. **Public vs gated** — starter default is public marketing + gated `/admin`, or describe the change
 8. **Auth extras** — keep starter (Better Auth credentials, no public signup, optional magic link) or describe the change
 
 Optional: canonical domain; brand/voice one-liner; GitHub visibility (default private).
 
-Do **not** ask which framework, ORM, CSS library, or host to use. Stack is locked (see Platform).
+Do **not** ask which framework, ORM, CSS library, or host to use. Stack is locked (see Platform). Do not ask for a Linear team.
 
 If they refuse onboard and want template maintenance on a misnamed copy, stop and say this file still has the first-run marker.
 
@@ -88,20 +88,20 @@ Next.js 16 App Router, Better Auth, Neon + Drizzle **migrations only**, Doppler,
 Resend, Tailwind 4, shadcn/ui, starter CMS + media library. Mutations = Route
 Handlers + Zod, not Server Actions.
 
-## Linear
+## Notion
 
-- Team: <team>
-- Project: <product name>
-- Identifiers: pending until the Linear project exists
+- Project page: <url or pending>
+- Issues database: `<slug>` — description is the origin URL; pending until that database exists
+- Do not create Linear issues. Do not write `.linear-project`.
 
 ## Success
 
 - <routes or jobs a user can complete when V1 is real>
 ```
 
-**`README.md`**: product title + job; credit [next-starter-template](https://github.com/teton-web/next-starter-template) (MIT © Teton Web Ventures LLC), no starter git history; stack bullets; install uses **this** slug (`git clone` this repo, `doppler setup --project <slug>`). Must not say `cd next-starter-template`. PRs target `origin/dev`.
+**`README.md`**: product title + job; credit [next-starter-template](https://github.com/teton-web/next-starter-template) (MIT © Teton Web Ventures LLC), no starter git history; stack bullets; install uses **this** slug (`git clone` this repo, `doppler setup --project <slug>`). Must not say `cd next-starter-template`. PRs target `origin/dev`. Say that work is tracked in Notion and in `.wcp/issues/`.
 
-**`.linear-project`**: one line, Linear project name (usually the product name).
+**Work queue:** `.wcp/issues/` is the record. Copy each issue file to the Notion issues database after the file is written. Do not create Linear issues. Do not write `.linear-project`.
 
 **Identity:** `package.json` `name` + `doppler:setup` + `doppler.yaml` `setup.project` → `<slug>`. Config stays `development`. Do not reuse the `next-starter-template` Doppler project.
 
@@ -110,14 +110,14 @@ Handlers + Zod, not Server Actions.
 Overwrite **`AGENTS.md` in full** with [Onboarded AGENTS.md](#onboarded-agentsmd) below, slots filled. That write must:
 
 - **Remove** `<!-- first-run: starter-onboard -->` and every first-run / questionnaire section
-- **Keep** Linear, Product, Secrets (this slug), Database, Auth (plus extras they asked), Conventions
+- **Keep** Notion, Product, Secrets (this slug), Database, Auth (plus extras they asked), Conventions
 - Add product constraints from vision (what this app *is*) — do not paste all of `VISION.md`
 
 Onboard is **not done** while this marker remains.
 
 Then commit on `main` (`docs: onboard <product name>`), ensure lowercase `dev` exists and includes that commit. Do not push unless asked.
 
-If the user ran `/start`, continue that skill (Linear project + V1 build). Otherwise stop and wait for the next instruction.
+If the user ran `/start`, continue that skill (Notion issues database + V1 build). Otherwise stop and wait for the next instruction.
 
 ---
 
@@ -160,11 +160,11 @@ Copy these rules into the onboarded file (Secrets retargeted to `<slug>`).
 Write **only** this (filled). No first-run marker. No questionnaire.
 
 ```markdown
-## Linear
+## Notion
 
-- **Project:** <product name>
-- **Team:** <team> (`PREFIX` when known)
-- **Repo binding:** Auto-resolved from `.linear-project` (`<project name>`).
+- **Project page:** <url or pending>
+- **Issues database:** `<slug>`. Description is this repo's origin URL. Statuses match `.wcp/issues/`: `open`, `in-progress`, `in-review`, `done`, `blocked`, `canceled`. The issue file is the record. Copy it to Notion after the file is written.
+- Do not create Linear issues. Do not write `.linear-project`.
 
 ## Product
 
@@ -208,4 +208,4 @@ Write **only** this (filled). No first-run marker. No questionnaire.
 
 ## Template maintenance (public template only)
 
-When changing the starter: keep `<!-- first-run: starter-onboard -->`, keep Platform accurate, do not add a client product name. First-run questions and the onboarded shape stay in this file so clones can self-update.
+When changing the starter: keep `<!-- first-run: starter-onboard -->`, keep Platform accurate, do not add a client product name. First-run questions and the onboarded shape stay in this file so clones can self-update. Track starter work in Notion. Do not create Linear issues. Do not write `.linear-project`.

@@ -40,3 +40,7 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 
+.wcp/RUN.md
+.wcp/run.sqlite
+.wcp/*.sqlite-wal
+.wcp/*.sqlite-shm

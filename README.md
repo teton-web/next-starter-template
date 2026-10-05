@@ -133,6 +133,10 @@ The gate is **off** by default. Preview/production turn it on only when the `sit
 
 Existing clones (**Bill Lax**, **MKFF**, **gateway-match**, **inventRight**) that still have Doppler `SITE_GATE_PASSWORD` must not go public on pull: leftover env is used **only** while the flag row has no hash. Before or with the pull: enable `site_gate` and set a password in `/admin/features`, then remove `SITE_GATE_PASSWORD` from Doppler. After that, preview/prod gating for anonymous visitors comes from `GET /api/site-gate/public-state`, not leftover env and not an admin cookie.
 
+## Work tracking
+
+Track work in Notion. The committed queue is `.wcp/issues/`. Each product has one Notion issues database titled with the repo slug. Its description is that repo's git origin URL. Copy an issue file to that database after the file is written. Do not create Linear issues. Do not write `.linear-project`.
+
 ## Contributing
 
 PRs target **`origin/dev`**. GitHub **About** and topics stay Better Auth (`better-auth`).

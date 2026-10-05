@@ -335,6 +335,7 @@ describe("source invariants", () => {
     expect(read("app/api/site-gate/route.ts")).toContain("checkRateLimit")
   })
 
+  // WCP notion-tracker: AGENTS.md onboard tells clones to track work in Notion (notion-not-linear)
   test("AGENTS.md first-run marker matches package identity", () => {
     const pkg = JSON.parse(read("package.json")) as { name?: string }
     const agents = read("AGENTS.md")
@@ -344,10 +345,16 @@ describe("source invariants", () => {
       expect(agents).toContain("Prefill from the user’s message")
       expect(agents).toContain("Overwrite **`AGENTS.md` in full**")
       expect(agents).toContain("## Onboarded AGENTS.md")
+      expect(agents).toContain("## Notion")
+      expect(agents).toContain("Do not create Linear issues")
+      expect(agents).toContain("Do not write `.linear-project`")
+      expect(agents).not.toContain("Keep a Linear URL")
+      expect(agents).not.toContain("## Linear")
     } else {
       expect(agents).not.toContain(marker)
-      expect(agents).toContain("## Linear")
+      expect(agents).toContain("## Notion")
       expect(agents).toContain("## Secrets")
+      expect(agents).not.toContain("## Linear")
     }
   })
 
@@ -382,6 +389,11 @@ describe("source invariants", () => {
     expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
     expect(readme).toContain("docs/adr/0001-starter-boundaries.md")
     expect(readme).toContain("Do not set `RESEND_API_KEY` in CI stubs")
+    // WCP notion-tracker: README.md work tracking section points at Notion (notion-not-linear)
+    expect(readme).toContain("Track work in Notion")
+    expect(readme).toContain("Do not create Linear issues")
+    expect(readme).toContain("Do not write `.linear-project`")
+    expect(readme).not.toContain("Keep a Linear URL")
     expect(readme).toContain("GitHub **About** and topics")
     expect(readme).toContain("`better-auth`")
     expect(readme).toContain("not Auth.js")
