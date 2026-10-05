@@ -12,7 +12,7 @@ files:
   - docs/FEATURE_FLAGS.md
   - tests/source-invariants.test.ts
   - .wcp/issues/done/0379-por-379-gold-standard-kit-flags-galleries-stripe-and-hal.md
-commit:
+commit: 021fb6e45a461154f0ca45168dd74fa54129ccfa
 pr:
 reason:
 created: 2026-10-05T17:46:37Z

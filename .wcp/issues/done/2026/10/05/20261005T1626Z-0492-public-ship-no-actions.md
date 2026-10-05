@@ -22,7 +22,7 @@ files:
   - tests/source-invariants.test.ts
   - tests/waitlist.test.ts
   - .wcp/issues/
-commit: c43cf591c643765df7961fafcd52e4a7f976c36a
+commit: eb7546c5e0bef350dd4690431470e32782689620
 pr:
 reason:
 created: 2026-10-05T16:26:43Z

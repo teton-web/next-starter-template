@@ -12,7 +12,7 @@ files:
   - README.md
   - tests/source-invariants.test.ts
   - .gitignore
-commit: a89d29e8be3930564b376afaf4346cc32dceff11
+commit: e9fd9b6acc6a5c42a8b444d9a2c402716c178cb4
 pr:
 reason:
 created: 2026-10-05T15:36:45Z
