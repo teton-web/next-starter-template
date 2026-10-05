@@ -4,7 +4,7 @@ A production-ready Next.js starter with **Better Auth**, Neon/Drizzle **migratio
 
 **License:** [MIT](LICENSE) © Teton Web Ventures LLC. Public template: [github.com/teton-web/next-starter-template](https://github.com/teton-web/next-starter-template). GitHub **About** and topics: Better Auth (`better-auth`), not Auth.js.
 
-Design source: [Next Starter gold standard](docs/adr/0001-starter-boundaries.md) · platform boundaries: [ADR 0001](docs/adr/0001-starter-boundaries.md) · flags: [docs/FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md).
+Platform boundaries: [ADR 0001](docs/adr/0001-starter-boundaries.md) · flags: [docs/FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md).
 
 Pull requests target **`origin/dev`**.
 
@@ -121,7 +121,7 @@ bun run db:seed
 
 Node `isEnabled(key)` (Route Handlers / server): Doppler kill switch `FEATURE_<KEY>=0` (exact `"0"` only) → optional DB row → catalog default → required-env checks. Platform keys (`auth`, `admin`, `cms`, `media`, `contact`, `seo`, `analytics`, `theme`) stay on and are not UI-off. Optional keys default **off** (`site_gate`, `waitlist`, `stripe`, `galleries`, `scheduled_publish`, `oauth`, `cron`). `proxy.ts` must not open Neon per request.
 
-Enable only what the clone needs on `/admin/features`. Full rules: [docs/FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md). Boundaries: [ADR 0001](docs/adr/0001-starter-boundaries.md). Inventory: [gold-standard Notion page](docs/adr/0001-starter-boundaries.md).
+Enable only what the clone needs on `/admin/features`. Full rules: [docs/FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md). Boundaries: [ADR 0001](docs/adr/0001-starter-boundaries.md).
 
 ## Deployment
 

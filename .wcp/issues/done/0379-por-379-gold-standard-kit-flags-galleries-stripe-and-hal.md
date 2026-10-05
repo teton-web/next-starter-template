@@ -58,7 +58,6 @@ Queue status follows Water Cooler Protocol. Todo, In Progress, In Review, Triage
 ## Context
 
 * Repo: [teton-web/next-starter-template](<https://github.com/teton-web/next-starter-template>) (`main` `417f717`)
-* Design source: [Next Starter gold standard — inventory, gaps, flags](<docs/adr/0001-starter-boundaries.md>)
 * Gallery source of truth: the reference app (`db9ab9ae`)
 * Team: Portfolio (`POR`)
 
